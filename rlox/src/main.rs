@@ -5,6 +5,7 @@ mod grammar;
 mod ast_printer;
 mod parser;
 mod environment;
+mod resolver;
 
 use std::env::args;
 use runner::Runner;

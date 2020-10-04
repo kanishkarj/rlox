@@ -4,11 +4,13 @@ use crate::runner::Runner;
 
 pub const empty_str: String = String::new();
 
+// make return, break into another enum and extend
 #[derive(Debug,Clone)]
 pub enum LoxError {
     ScannerError(String, u32),
     ParserError(String, u32),
     RuntimeError(String, u32),
+    SemanticError(String, u32),
     ReturnVal(Object),
     BreakExc,
     ContinueExc,
@@ -20,6 +22,7 @@ impl LoxError {
             LoxError::ScannerError(lex, line) => Runner::error(*line, lex, &format!("ScannerError: {:?}", msg).to_string()),
             LoxError::ParserError(lex, line) => Runner::error(*line, lex, &format!("ParserError: {:?}", msg).to_string()),
             LoxError::RuntimeError(lex, line) => Runner::error(*line, lex, &format!("RuntimeError: {:?}", msg).to_string()),
+            LoxError::SemanticError(lex, line) => Runner::error(*line, lex, &format!("SemanticError: {:?}", msg).to_string()),
             _ => {}
         }
     }
@@ -83,7 +86,8 @@ pub struct Token {
     pub tokenType: TokenType,
     pub lineNo: u32,
     pub literal: Option<Literal>,
-    pub lexeme: String
+    pub lexeme: String,
+    pub scope: Option<usize>
 }
 
 impl Token {
@@ -95,7 +99,8 @@ impl Token {
                 tokenType,
                 lineNo,
                 literal,
-                lexeme
+                lexeme,
+                scope: None
             }
     }
 }

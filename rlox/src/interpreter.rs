@@ -18,6 +18,7 @@ pub enum Object {
 
 pub struct Interpreter {
     pub env: Environment,
+    pub global: Environment,
 }
 
 
@@ -204,25 +205,32 @@ impl Visitor<Object> for Interpreter {
         if let Some(var) = &mut val.initializer {
             value = self.evaluate_expr(var)?;
         }
-        self.env.define(val.name.lexeme.clone(), value);
+        if let Some(dist) = val.name.scope {
+            self.env.defineAt(val.name.lexeme.clone(), value.clone(), dist);
+        } else {
+            self.global.define(val.name.lexeme.clone(), value.clone());
+        }
         return Ok(Object::Nil)
      }
 
     fn visitVariableStmt(&mut self, val: &mut Variable) -> Result<Object, LoxError> {
         // println!("{:?} -> {:?}", val.name.lexeme, self.env.get(val.name.lexeme.clone()));
-        self.env.get(val.name.lexeme.clone()).ok_or(
-            LoxError::RuntimeError("Undefined get".to_string(), val.name.lineNo)
-        )
+        self.variableLookup(&mut val.name)
     }
     fn visitAssignStmt(&mut self, val: &mut Assign) -> Result<Object, LoxError> { 
         let value = self.evaluate_expr(&mut val.value)?;
-        if !self.env.assign(val.name.lexeme.clone(), value.clone()) {
+        if !(if let Some(dist) = val.name.scope {
+            self.env.assignAt(val.name.lexeme.clone(), value.clone(),dist)
+        } else {
+            self.global.assign(val.name.lexeme.clone(), value.clone())
+        }) {
             return Err(LoxError::RuntimeError("Undefined assign".to_string(), val.name.lineNo))
         }
+        
         return Ok(value)
      }
     fn visitBlockStmt(&mut self, val: &mut Block) -> Result<Object, LoxError> {
-        let env = Environment::from(self.env.clone());
+        let env = Environment::build(self.env.clone());
         return self.executeBlock(&mut val.statements, env);
     }
 
@@ -320,7 +328,8 @@ impl Interpreter
         let mut env = Environment::new();
         env.define("time".to_string(), Object::Function(Box::new(ClockFunc{})));
         Interpreter {
-            env
+            env:            env.clone(),
+            global: env
         }
     }
 
@@ -330,7 +339,13 @@ impl Interpreter
         let prev = std::mem::replace(&mut self.env, env);
         let mut retVal = Object::Nil;
         for stmt in stmts {
-            self.evaluate_stmt(stmt)?;
+            match self.evaluate_stmt(stmt) {
+                Ok(_) => {},
+                err => {
+                    self.env = prev;
+                    return err
+                }
+            };
         }
         self.env = prev;
         Ok(retVal)
@@ -346,6 +361,17 @@ impl Interpreter
         }
     }
 
+    fn variableLookup(&mut self, name: &mut Token) -> Result<Object, LoxError>
+        where Self: Visitor<Object>
+    {
+        let err = LoxError::RuntimeError("Undefined get".to_string(), name.lineNo);
+        return if let Some(dist) = name.scope {
+            self.env.getAt(name.lexeme.clone(), dist).ok_or(err)
+        } else {
+            self.global.get(name.lexeme.clone()).ok_or(err)
+        }
+        
+    }
 
     fn evaluate_expr(&mut self, expr: &mut Expr) -> Result<Object, LoxError>
         where Self: Visitor<Object>

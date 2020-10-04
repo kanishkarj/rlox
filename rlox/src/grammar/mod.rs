@@ -113,7 +113,7 @@ impl Expr::Expr {
             
                 fn arity(&mut self) -> usize { self.declaration.params.len()}
                 fn call(&mut self, intrprt: &mut Interpreter, args:Vec<Object>) -> Result<Object, LoxError> { 
-                    let mut env = Environment::form(self.closure.clone());
+                    let mut env = Environment::build(self.closure.clone());
                     for (param,arg) in self.declaration.params.iter().zip(args) {
                         env.define(param.lexeme.clone(), arg);
                     }
@@ -144,8 +144,7 @@ impl Expr::Expr {
             
                 fn arity(&mut self) -> usize { self.declaration.params.len()}
                 fn call(&mut self, intrprt: &mut Interpreter, args:Vec<Object>) -> Result<Object, LoxError> { 
-                    let mut env = Environment::form(self.closure.clone());
-                    // intrprt.env.create_scope();
+                    let mut env = Environment::build(self.closure.clone());
                     for (param,arg) in self.declaration.params.iter().zip(args) {
                         env.define(param.lexeme.clone(), arg);
                     }

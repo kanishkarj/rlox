@@ -6,7 +6,7 @@ use crate::scanner::Lexer;
 use crate::parser::Parser;
 // use crate::ast_printer::ASTprinter;
 use crate::interpreter::Interpreter;
-
+use crate::resolver::Resolver;
 static had_error: AtomicBool = AtomicBool::new(false);
 
 pub struct Runner {
@@ -54,6 +54,11 @@ impl Runner {
                         //     },
                         //     Err(err) => {println!("error: {:?}", err)},
                         // }
+                        let mut resolv = Resolver::new();
+                        if let Err(err) = resolv.resolve(&mut ast) {
+                            err.print_error("");
+                            return;
+                        }
                         self.interpreter.interpret(&mut ast);
                     },
                     Err(err) => {println!("error: {:?}", err)},

@@ -21,9 +21,6 @@ impl EnvInner {
             return if self.values.contains_key(&name) {
                 self.values.insert(name, val);
                 true
-            } else if let Some(parent) = &mut self.parent {
-                parent.env.borrow_mut().assign(name, val);
-                true
             } else {
                 false
             }
@@ -35,8 +32,6 @@ impl EnvInner {
                 let val = self.values.remove(&name).unwrap();
                 self.values.insert(name, val.clone());
                 return Some(val);
-            } else if let Some(parent) = &mut self.parent {
-                parent.env.borrow_mut().get(name)
             } else {
                 None
             }
@@ -49,7 +44,7 @@ impl EnvInner {
         }
     }
 
-    pub fn form(parent: Environment) -> Self {
+    pub fn build(parent: Environment) -> Self {
         EnvInner {
             values: HashMap::new(),
             parent: Some(parent)
@@ -69,16 +64,22 @@ impl Environment {
             env: Rc::from(RefCell::new(EnvInner::new()))
         }
     }
-    pub fn form(parent: Environment) -> Self {
+    pub fn build(parent: Environment) -> Self {
         Environment {
-            env: Rc::from(RefCell::new(EnvInner::form(parent)))
+            env: Rc::from(RefCell::new(EnvInner::build(parent)))
         }
     }
-    // pub fn wrap(to_wrap: Environment) -> Self {
-    //     Environment {
-    //         env: Rc::from(to_wrap.env)
-    //     }
-    // }
+    
+    pub fn ancestor(&mut self, hops: usize) -> Option<Environment> {
+        return if hops == 0 {
+            Some(self.clone())
+        } else if let Some(env) = &mut self.env.borrow_mut().parent {
+            return env.ancestor(hops - 1)
+        } else {
+            None
+        }
+    }
+    
     pub fn assign(&mut self, name: String, val: Object) -> bool {
         self.env.borrow_mut().assign(name, val)
     }
@@ -86,7 +87,29 @@ impl Environment {
     pub fn get(&mut self, name: String) -> Option<Object> {
         self.env.borrow_mut().get(name)   
     }
+
+    pub fn getAt(&mut self, name: String, hops: usize) -> Option<Object> {
+        if let Some(env) =  &mut self.ancestor(hops) {
+            return env.get(name)
+        }
+        None
+    }
+
+    pub fn assignAt(&mut self, name: String, val: Object, hops: usize) -> bool {
+        if let Some(env) =  &mut self.ancestor(hops) {
+            return env.assign(name, val)
+        }
+        false
+    }
+
     pub fn define(&mut self, name: String, val: Object) {
         self.env.borrow_mut().define(name, val)
     }
+
+    pub fn defineAt(&mut self, name: String, val: Object, hops: usize) {
+        if let Some(env) =  &mut self.ancestor(hops) {
+            env.define(name, val)
+        }
+    }
+
 }

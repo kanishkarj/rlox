@@ -1,6 +1,7 @@
 use crate::scanner::*; 
 use crate::grammar::LoxCallable; 
-use crate::grammar::Stmt::*; 
+use crate::grammar::Stmt::*;
+
 #[derive(Debug, Clone)] 
 pub enum Expr { 
    Binary(Box<Binary>), 
