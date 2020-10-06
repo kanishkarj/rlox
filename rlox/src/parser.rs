@@ -35,6 +35,9 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Result<Stmt, LoxError> {
+        if self.validate(TokenType::CLASS) {
+            return self.classDeclaration();
+        }
         if self.validate(TokenType::FUN) {
             return self.function("function");
         }
@@ -42,6 +45,28 @@ impl Parser {
             return self.valDeclaration();
         }
         return self.statement();       
+    }
+    
+    fn classDeclaration(&mut self) -> Result<Stmt, LoxError> {
+        let name = self.consume(TokenType::IDENTIFIER, format!("Expect Class name"))?.clone();
+        let mut superClass = None;
+        if self.validate(TokenType::LESS) {
+            self.consume(TokenType::IDENTIFIER, format!("Expect SuperClass name"))?;
+            superClass = Some(Variable::new(self.previous().clone()));
+        }
+        self.consume(TokenType::LEFT_BRACE, format!("Expect {{ before class body"))?;
+        
+        let mut methods = Vec::new();
+
+        while !self.check(TokenType::RIGHT_BRACE) && !self.isAtEnd() {
+            if let Stmt::Function(method) = self.function("method")? {
+                methods.push(*method);
+            }
+        }
+        
+        self.consume(TokenType::RIGHT_BRACE, "Expect '}' after class body".to_string())?;
+        
+        return Ok(Stmt::Class(Box::new(Class::new(name.clone(),methods,superClass))))
     }
 
     fn function(&mut self, kind: &str) -> Result<Stmt, LoxError> {
@@ -246,7 +271,9 @@ impl Parser {
             
             if let Expr::Variable(name) = expr {
                 return Ok(Expr::Assign(Box::new(Assign::new(name.name, value))))
-            } 
+            } else if let Expr::Get(get_expr) = expr {
+                return Ok(Expr::Set(Box::new(Set::new(get_expr.object, get_expr.name.clone(), value))))
+            }
         }
 
         Ok(expr)
@@ -397,7 +424,11 @@ impl Parser {
         loop {
             if self.validate(TokenType::LEFT_PAREN) {
                 expr = self.finishCall(expr)?;
-            } else {
+            } else if self.validate(TokenType::DOT) {
+                let name = self.consume(TokenType::IDENTIFIER, "Expect property name after '.'.".to_string())?;
+                expr = Expr::Get(Box::new(Get::new(expr, name.clone())));
+            }
+            else {
                 break;
             }
         }
@@ -424,6 +455,15 @@ impl Parser {
 
     fn primary(&mut self) -> Result<Expr,LoxError> {
 
+        if self.validate(TokenType::THIS) {
+            return Ok(Expr::This(Box::new(This::new(self.previous().clone()))))
+        }
+        if self.validate(TokenType::SUPER) {
+            let keyword = self.previous().clone();
+            self.consume(TokenType::DOT,"Expect '.' after super.".to_string())?;
+            let method = self.consume(TokenType::IDENTIFIER,"Expect super class method name.".to_string())?.clone();
+            return Ok(Expr::Super(Box::new(Super::new(method, keyword))))
+        }
         if self.validate(TokenType::FALSE) {
             return Ok(Expr::Literal(Literal::BOOL(false)))
         }

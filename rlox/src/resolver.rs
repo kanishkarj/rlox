@@ -4,20 +4,27 @@ use crate::scanner::*;
 use std::fmt::Debug;
 use crate::runner::Runner;
 
-use crate::grammar::{Visitor, LoxCallable, LoxFunction, LoxLambda};
+use crate::grammar::{Visitor, LoxClass, LoxCallable, LoxFunction, LoxInstance, LoxLambda, FunctionType, ClassType};
 use crate::environment::Environment;
 
 use std::collections::HashMap;
 
+// handle break/continue at resolve
+// static fields maybe 
+
 pub struct Resolver {
     // bool corresponds to if the value has been initialized
-    pub scopes: Vec<HashMap<String,bool>>
+    pub scopes: Vec<HashMap<String,bool>>,
+    currClass: ClassType,
+    currFunction: FunctionType
 }
 
 impl Resolver {
     pub fn new() -> Self {
         Resolver{
-            scopes: vec![]
+            scopes: vec![],
+            currClass: ClassType::NONE,
+            currFunction: FunctionType::NONE
         }
     }
 
@@ -39,6 +46,7 @@ impl Resolver {
     }
 
     fn resolveLocal(&mut self, name: &mut Token) {
+
         for (i,scope) in self.scopes.iter().enumerate().rev() {
             if scope.contains_key(&name.lexeme) {
                 name.scope = Some(self.scopes.len() - 1 - i);
@@ -68,14 +76,18 @@ impl Resolver {
         Ok(())
     }
 
-    fn resolveFunction(&mut self, func: &mut Function) -> Result<(), LoxError>  {
+    fn resolveFunction(&mut self, func: &mut Function, dec: FunctionType) -> Result<(), LoxError>  {
         self.beginScope();
+        let currfn = self.currFunction;
+        self.currFunction = dec;
+
         for param in &func.params {
             self.declare(&param);
             self.define(&param)?;
         }
         self.resolve(&mut func.body)?;
         self.endScope();
+        self.currFunction = currfn;
         Ok(())
     }
 
@@ -130,6 +142,33 @@ impl Visitor<()> for Resolver {
 
     fn visitLambdaExpr (&mut self, val: &mut Lambda) -> Result<(), LoxError> {
         self.resolveLambda(val)?;
+        Ok(())
+    }
+
+    fn visitGetExpr (&mut self, val: &mut Get) -> Result<(), LoxError> {
+        self.resolve_exp(&mut val.object)?;
+        Ok(())
+    }
+    
+    fn visitSetExpr (&mut self, val: &mut Set) -> Result<(), LoxError> {
+        self.resolve_exp(&mut val.value)?;
+        self.resolve_exp(&mut val.object)?;
+        Ok(())
+    }
+
+    fn visitSuperExpr(&mut self, val: &mut Super)  -> Result<(), LoxError> {
+        if self.currClass != ClassType::SUBCLASS {
+            return Err(LoxError::SemanticError("No super class as such.".to_string(), val.keyword.lineNo))
+        }
+        self.resolveLocal(&mut val.keyword);
+        Ok(())
+      }
+
+    fn visitThisExpr (&mut self, val: &mut This) -> Result<(), LoxError> {
+        if self.currClass != ClassType::CLASS {
+            return Err(LoxError::SemanticError("Cannot use this outside class.".to_string(), val.keyword.lineNo))
+        }
+        self.resolveLocal(&mut val.keyword);
         Ok(())
     }
 
@@ -202,14 +241,55 @@ impl Visitor<()> for Resolver {
     fn visitFunctionStmt (&mut self, val: &mut Function) -> Result<(), LoxError> {
         self.declare(&mut val.name);
         self.define(&mut val.name)?;
-        self.resolveFunction(val)?;
+        self.resolveFunction(val, FunctionType::FUNCTION)?;
         Ok(())
     }
 
     fn visitReturnStmt (&mut self, val: &mut Return) -> Result<(), LoxError> {
-        if let Some(val) = &mut val.value {
-            self.resolve_exp(val)?;
+        if let Some(value) = &mut val.value {
+            if self.currFunction == FunctionType::NONE {
+                return Err(LoxError::SemanticError("Return only from function".to_string(), val.keyword.lineNo))
+            }
+            if self.currFunction == FunctionType::INITIALIZER {
+                return Err(LoxError::SemanticError("Cannot return from initializer".to_string(), val.keyword.lineNo))
+            }
+            self.resolve_exp(value)?;
         }
+        Ok(())
+    }
+
+    fn visitClassStmt (&mut self, val: &mut Class) -> Result<(), LoxError> {
+        let currClass = self.currClass;
+        self.currClass = ClassType::CLASS;
+
+        self.declare(&val.name);
+        self.define(&val.name)?;
+        if let Some(spClass) = &mut val.superclass {
+            self.currClass = ClassType::SUBCLASS;
+            if spClass.name.lexeme == val.name.lexeme {
+                return Err(LoxError::SemanticError("Class can't inherit itself".to_string(), val.name.lineNo))
+            }
+            self.resolve_exp(&mut Expr::Variable(Box::new(spClass.clone())));
+            self.beginScope();
+            self.scopes.last_mut().unwrap().insert("super".to_string(), true);
+        }
+        
+        self.beginScope();
+        self.scopes.last_mut().unwrap().insert("this".to_string(), true);
+        for method in &mut val.methods {
+            let dec = if method.name.lexeme == "init".to_string() {
+                FunctionType::INITIALIZER 
+            } else {
+                FunctionType::METHOD
+            };
+            self.resolveFunction(method, dec)?;
+        }
+
+        self.endScope();
+        if let Some(spClass) = &val.superclass {
+            self.endScope();
+        }
+        self.currClass = currClass;
         Ok(())
     }
 

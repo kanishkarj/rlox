@@ -3,9 +3,15 @@ use crate::scanner::*;
 use std::fmt::Debug;
 use crate::runner::Runner;
 
-use crate::grammar::{Visitor, LoxCallable, LoxFunction, LoxLambda};
+use crate::grammar::{Visitor, LoxCallable, LoxFunction, LoxLambda, LoxClass, LoxInstance};
 use crate::environment::Environment;
 use std::time::SystemTime;
+use std::rc::Rc;
+use std::cell::RefCell;
+
+use std::collections::HashMap;
+
+// obj.get not handled
 
 #[derive(Debug,Clone)]
 pub enum Object {
@@ -13,7 +19,9 @@ pub enum Object {
     Num(f64),
     Bool(bool),
     Nil,
-    Function(Box<dyn LoxCallable>)
+    Function(Rc<RefCell<dyn LoxCallable>>),
+    Class(Rc<RefCell<LoxClass>>),
+    Instance(Rc<RefCell<LoxInstance>>),
 }
 
 pub struct Interpreter {
@@ -30,7 +38,7 @@ impl LoxCallable for ClockFunc {
         let curr_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
         Ok(Object::Num(curr_time.as_millis() as f64))
     }
-    fn arity(&mut self) -> usize { 0 }
+    fn arity(&self) -> usize { 0 }
 }
 
 impl Visitor<Object> for Interpreter {
@@ -190,6 +198,32 @@ impl Visitor<Object> for Interpreter {
         )
     }
     
+    fn visitGetExpr(&mut self, val: &mut Get) -> Result<Object, LoxError> { 
+        
+        let obj = self.evaluate_expr(&mut val.object)?;
+        if let Object::Instance(inst) = obj {
+            if let Some(val) = inst.borrow().get(&val.name) {
+                return Ok(val);
+            } else {
+                return Ok(Object::Function(
+                    inst.borrow().klass.bind_method(&val.name, Rc::clone(&inst))?
+                ));
+            }
+        }
+        Err(LoxError::RuntimeError("Only Instance have properties".to_string(), val.name.lineNo))
+    }
+
+    fn visitSetExpr(&mut self, val: &mut Set) -> Result<Object, LoxError> {
+        let mut obj = self.evaluate_expr(&mut val.object)?;
+        if let Object::Instance(obj) = &mut obj {
+            let value = self.evaluate_expr(&mut val.value)?;
+            obj.borrow().set(&val.name, value.clone());
+            return Ok(value)
+        } else {
+            return Err(LoxError::RuntimeError("Only Instances have feilds".to_string(), val.name.lineNo))
+        }
+    }
+
     fn visitPrintStmt(&mut self, val: &mut Print) -> std::result::Result<Object, LoxError> { 
         let val = self.evaluate_expr(&mut val.expr)?;
         println!("[print] {:?}", val);
@@ -206,9 +240,9 @@ impl Visitor<Object> for Interpreter {
             value = self.evaluate_expr(var)?;
         }
         if let Some(dist) = val.name.scope {
-            self.env.defineAt(val.name.lexeme.clone(), value.clone(), dist);
+            self.env.defineAt(val.name.lexeme.clone(), value, dist);
         } else {
-            self.global.define(val.name.lexeme.clone(), value.clone());
+            self.global.define(val.name.lexeme.clone(), value);
         }
         return Ok(Object::Nil)
      }
@@ -220,7 +254,7 @@ impl Visitor<Object> for Interpreter {
     fn visitAssignStmt(&mut self, val: &mut Assign) -> Result<Object, LoxError> { 
         let value = self.evaluate_expr(&mut val.value)?;
         if !(if let Some(dist) = val.name.scope {
-            self.env.assignAt(val.name.lexeme.clone(), value.clone(),dist)
+            self.env.assignAt(val.name.lexeme.clone(), value.clone(), dist)
         } else {
             self.global.assign(val.name.lexeme.clone(), value.clone())
         }) {
@@ -263,7 +297,7 @@ impl Visitor<Object> for Interpreter {
 
     fn visitLambdaExpr(&mut self, val: &mut Lambda) -> Result<Object, LoxError> { 
         let func = LoxLambda::new(val.clone(), self.env.clone());
-        return Ok(Object::Function(Box::new(func)))
+        return Ok(Object::Function(Rc::new(RefCell::new(func))))
     }
 
     fn visitWhileStmt(&mut self, val: &mut While) -> Result<Object, LoxError> {
@@ -293,23 +327,29 @@ impl Visitor<Object> for Interpreter {
             args.push(self.evaluate_expr(arg)?);
         }
 
-        let mut fn_def: Box<dyn LoxCallable>;
+        let mut fn_def: Rc<RefCell<dyn LoxCallable>>;
 
         if let Object::Function(callee) = callee {
+            fn_def = callee;
+        } else if let Object::Class(callee) = callee {
             fn_def = callee;
         } else {
             return Err(LoxError::RuntimeError("Not a function".to_string(), val.paren.lineNo))
         }
 
-        if args.len()  != fn_def.arity() {
+        if args.len()  != fn_def.borrow().arity() {
             return Err(LoxError::RuntimeError("No. of args don't match".to_string(), val.paren.lineNo))
         }
-        return fn_def.call(self, args);
+        return fn_def.borrow_mut().call(self, args);
+    }
+
+    fn visitThisExpr (&mut self, val: &mut This) -> Result<Object, LoxError> {
+        self.variableLookup(&mut val.keyword)
     }
 
     fn visitFunctionStmt(&mut self, val: &mut Function) -> Result<Object, LoxError> {
-        let func = LoxFunction::new(val.clone(), self.env.clone());
-        self.env.define(val.name.lexeme.clone(), Object::Function(Box::new(func)));
+        let func = LoxFunction::new(val.clone(), self.env.clone(), false);
+        self.env.define(val.name.lexeme.clone(), Object::Function(Rc::new(RefCell::new(func))));
         return Ok(Object::Nil)
     }
 
@@ -320,13 +360,56 @@ impl Visitor<Object> for Interpreter {
         }
         return Err(LoxError::ReturnVal(retValue))
     }
+
+    fn visitClassStmt(&mut self, val: &mut Class) -> Result<Object, LoxError> {
+        let mut superClass = None;
+        if let Some(spClass) = &mut val.superclass {
+            if let Object::Class(value) = &self.visitVariableStmt(spClass)?{
+                superClass = Some(Rc::clone(value));
+                self.env = Environment::build(self.env.clone());
+                self.env.define("super".to_string(), Object::Class(Rc::clone(value)))
+            } 
+            else {
+                return Err(LoxError::RuntimeError("SuperClass must be a class".to_string(), val.name.lineNo));
+            }
+        }
+        self.env.define(val.name.lexeme.clone(), Object::Nil);
+
+        let mut methods = HashMap::new();
+
+        for method in &val.methods {
+            let func = Rc::new(LoxFunction::new(method.clone(), self.env.clone(), true));
+            methods.insert(method.name.lexeme.clone(), func);
+        }
+
+        let klass = Object::Class(Rc::new(RefCell::new(LoxClass::new(val.name.lexeme.clone(), Rc::new(methods), superClass))));
+        self.env.assign(val.name.lexeme.clone(), klass);
+        return Ok(Object::Nil);
+    }
+
+    fn visitSuperExpr(&mut self, val: &mut Super) -> Result<Object, LoxError> {
+        let err = LoxError::RuntimeError("Only Instance have properties".to_string(), val.keyword.lineNo);
+        if let Some(dist) = val.keyword.scope {
+            let superClass = self.env.getAt("super".to_string(), dist).ok_or(err.clone())?;
+            let thisObj = self.env.getAt("this".to_string(), dist-1).ok_or(err.clone())?;
+            
+            if let Object::Class(superClass) = superClass {
+                if let Object::Instance(thisObj) = thisObj {
+                    if let Some(method) = superClass.borrow().findMethod(&val.method.lexeme) {
+                        return Ok(Object::Function(Rc::new(RefCell::new(method.bind(Rc::clone(&thisObj))))))
+                    }
+                }
+            }
+        }
+        Err(err)
+    }
 }
 
 impl Interpreter
 {
     pub fn new() -> Self {
         let mut env = Environment::new();
-        env.define("time".to_string(), Object::Function(Box::new(ClockFunc{})));
+        env.define("time".to_string(), Object::Function(Rc::new(RefCell::new(ClockFunc{}))));
         Interpreter {
             env:            env.clone(),
             global: env
@@ -368,7 +451,7 @@ impl Interpreter
         return if let Some(dist) = name.scope {
             self.env.getAt(name.lexeme.clone(), dist).ok_or(err)
         } else {
-            self.global.get(name.lexeme.clone()).ok_or(err)
+            self.env.getAt(name.lexeme.clone(), 0).ok_or(err)
         }
         
     }

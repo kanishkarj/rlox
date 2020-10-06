@@ -5,6 +5,7 @@ use crate::grammar::Expr::*;
 pub enum Stmt { 
    Expression(Box<Expression>), 
    Block(Box<Block>), 
+   Class(Box<Class>), 
    Function(Box<Function>), 
    Print(Box<Print>), 
    Var(Box<Var>), 
@@ -41,6 +42,26 @@ impl Block {
         pub fn new(statements: Vec<Stmt>,) -> Self {
             Self {
                 statements,
+
+            }
+        }
+
+        } 
+
+#[derive(Debug, Clone)] 
+pub struct Class { 
+   pub name: Token, 
+   pub methods: Vec<Function>, 
+   pub superclass: Option<Variable>, 
+} 
+
+impl Class { 
+
+        pub fn new(name: Token,methods: Vec<Function>,superclass: Option<Variable>,) -> Self {
+            Self {
+                name,
+methods,
+superclass,
 
             }
         }

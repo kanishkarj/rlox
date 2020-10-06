@@ -10,8 +10,6 @@ struct EnvInner {
     values: HashMap<String,Object>,
 }
 
-
-
 impl EnvInner {
     pub fn define(&mut self, name: String, val: Object) {
         self.values.insert(name, val);

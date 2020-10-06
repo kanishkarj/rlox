@@ -1,14 +1,17 @@
 use crate::scanner::*; 
 use crate::grammar::LoxCallable; 
-use crate::grammar::Stmt::*;
-
+use crate::grammar::Stmt::*; 
 #[derive(Debug, Clone)] 
 pub enum Expr { 
    Binary(Box<Binary>), 
    Grouping(Box<Grouping>), 
    Unary(Box<Unary>), 
    Variable(Box<Variable>), 
+   This(Box<This>), 
    Assign(Box<Assign>), 
+   Get(Box<Get>), 
+   Set(Box<Set>), 
+   Super(Box<Super>), 
    Logical(Box<Logical>), 
    Call(Box<Call>), 
    Lambda(Box<Lambda>), 
@@ -86,6 +89,22 @@ impl Variable {
         } 
 
 #[derive(Debug, Clone)] 
+pub struct This { 
+   pub keyword: Token, 
+} 
+
+impl This { 
+
+        pub fn new(keyword: Token,) -> Self {
+            Self {
+                keyword,
+
+            }
+        }
+
+        } 
+
+#[derive(Debug, Clone)] 
 pub struct Assign { 
    pub name: Token, 
    pub value: Expr, 
@@ -97,6 +116,62 @@ impl Assign {
             Self {
                 name,
 value,
+
+            }
+        }
+
+        } 
+
+#[derive(Debug, Clone)] 
+pub struct Get { 
+   pub object: Expr, 
+   pub name: Token, 
+} 
+
+impl Get { 
+
+        pub fn new(object: Expr,name: Token,) -> Self {
+            Self {
+                object,
+name,
+
+            }
+        }
+
+        } 
+
+#[derive(Debug, Clone)] 
+pub struct Set { 
+   pub object: Expr, 
+   pub name: Token, 
+   pub value: Expr, 
+} 
+
+impl Set { 
+
+        pub fn new(object: Expr,name: Token,value: Expr,) -> Self {
+            Self {
+                object,
+name,
+value,
+
+            }
+        }
+
+        } 
+
+#[derive(Debug, Clone)] 
+pub struct Super { 
+   pub method: Token, 
+   pub keyword: Token, 
+} 
+
+impl Super { 
+
+        pub fn new(method: Token,keyword: Token,) -> Self {
+            Self {
+                method,
+keyword,
 
             }
         }
