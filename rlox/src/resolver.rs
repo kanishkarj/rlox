@@ -4,7 +4,7 @@ use crate::scanner::*;
 use std::fmt::Debug;
 use crate::runner::Runner;
 
-use crate::grammar::{Visitor, LoxClass, LoxCallable, LoxFunction, LoxInstance, LoxLambda, FunctionType, ClassType};
+use crate::grammar::{Visitor, LoxClass, LoxCallable, LoxFunction, LoxInstance, LoxLambda, FunctionType, ClassType, VisAcceptor};
 use crate::environment::Environment;
 
 use std::collections::HashMap;
@@ -28,21 +28,9 @@ impl Resolver {
         }
     }
 
-    pub fn resolve(&mut self, stmts: &mut Vec<Stmt>)  -> Result<(), LoxError> {
-        for stm in stmts {
-            self.resolve_st(stm)?;
-        }
-        Ok(())
-    }
-
-    fn resolve_st(&mut self, stmt: &mut Stmt)  -> Result<(), LoxError> {
-        stmt.accept(self)?;
-        Ok(())
-    }
-
-    fn resolve_exp(&mut self, exp: &mut Expr)  -> Result<(), LoxError> {
-        exp.accept(self)?;
-        Ok(())
+    pub fn resolve<T: VisAcceptor<()> + Sized> (&mut self, expr: &mut T) -> Result<(), LoxError>
+    {
+        expr.accept(self)
     }
 
     fn resolveLocal(&mut self, name: &mut Token) {
@@ -107,26 +95,26 @@ impl Resolver {
 impl Visitor<()> for Resolver {
 
     fn visitBinaryExpr (&mut self, val: &mut Binary) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.left)?;
-        self.resolve_exp(&mut val.right)?;
+        self.resolve(&mut val.left)?;
+        self.resolve(&mut val.right)?;
         Ok(())
     }
 
     fn visitCallExpr (&mut self, val: &mut Call) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.callee)?;
+        self.resolve(&mut val.callee)?;
         for arg in &mut val.arguments {
-            self.resolve_exp(arg)?;
+            self.resolve(arg)?;
         }
         Ok(())
     }
 
     fn visitGroupingExpr (&mut self, val: &mut Grouping) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.expression)?;
+        self.resolve(&mut val.expression)?;
         Ok(())
     }
 
     fn visitUnaryExpr (&mut self, val: &mut Unary) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.right)?;
+        self.resolve(&mut val.right)?;
         Ok(())
     }
 
@@ -135,8 +123,8 @@ impl Visitor<()> for Resolver {
     }
 
     fn visitLogicalExpr (&mut self, val: &mut Logical) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.left)?;
-        self.resolve_exp(&mut val.right)?;
+        self.resolve(&mut val.left)?;
+        self.resolve(&mut val.right)?;
         Ok(())
     }
 
@@ -146,13 +134,13 @@ impl Visitor<()> for Resolver {
     }
 
     fn visitGetExpr (&mut self, val: &mut Get) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.object)?;
+        self.resolve(&mut val.object)?;
         Ok(())
     }
     
     fn visitSetExpr (&mut self, val: &mut Set) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.value)?;
-        self.resolve_exp(&mut val.object)?;
+        self.resolve(&mut val.value)?;
+        self.resolve(&mut val.object)?;
         Ok(())
     }
 
@@ -173,12 +161,12 @@ impl Visitor<()> for Resolver {
     }
 
     fn visitExpressionStmt (&mut self, val: &mut Expression) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.expr)?;
+        self.resolve(&mut val.expr)?;
         Ok(())
     }
 
     fn visitPrintStmt (&mut self, val: &mut Print) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.expr)?;
+        self.resolve(&mut val.expr)?;
         Ok(())
     }
 
@@ -195,7 +183,7 @@ impl Visitor<()> for Resolver {
     fn visitVarStmt (&mut self, val: &mut Var) -> Result<(), LoxError> {
         self.declare(&mut val.name);
         if let Some(initl) = &mut val.initializer {
-            self.resolve_exp(initl)?;
+            self.resolve(initl)?;
         }
         self.define(&mut val.name)?;
         self.resolveLocal(&mut val.name);
@@ -203,7 +191,7 @@ impl Visitor<()> for Resolver {
     }
 
     fn visitAssignStmt (&mut self, val: &mut Assign) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.value)?;
+        self.resolve(&mut val.value)?;
         self.resolveLocal(&mut val.name);
         Ok(())
     }
@@ -216,26 +204,30 @@ impl Visitor<()> for Resolver {
     }
 
     fn visitIfStmt (&mut self, val: &mut If) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.condition)?;
-        self.resolve_st(&mut val.thenBranch)?;
+        self.resolve(&mut val.condition)?;
+        self.resolve(&mut val.thenBranch)?;
         if let Some(elseBr) = &mut val.elseBranch {
-            self.resolve_st(elseBr)?;
+            self.resolve(elseBr)?;
         }
         Ok(())
     }
 
     fn visitWhileStmt (&mut self, val: &mut While) -> Result<(), LoxError> {
-        self.resolve_exp(&mut val.condition)?;
-        self.resolve_st(&mut val.body)?;
-        Ok(())
+        self.resolve(&mut val.condition)?;
+        match self.resolve(&mut val.body) {
+            Err(LoxError::BreakExc(_)) | Err(LoxError::ContinueExc(_)) | Ok(_)=> {
+                println!("hello");
+                Ok(())},
+            Err(err) => Err(err)
+        }
     }
 
     fn visitBreakStmt (&mut self, val: &mut Break) -> Result<(), LoxError> {
-        Ok(())
+        Err(LoxError::BreakExc(val.keyword.lineNo))
     }
 
     fn visitContinueStmt (&mut self, val: &mut Continue) -> Result<(), LoxError> {
-        Ok(())
+        Err(LoxError::ContinueExc(val.keyword.lineNo))
     }
 
     fn visitFunctionStmt (&mut self, val: &mut Function) -> Result<(), LoxError> {
@@ -253,7 +245,7 @@ impl Visitor<()> for Resolver {
             if self.currFunction == FunctionType::INITIALIZER {
                 return Err(LoxError::SemanticError("Cannot return from initializer".to_string(), val.keyword.lineNo))
             }
-            self.resolve_exp(value)?;
+            self.resolve(value)?;
         }
         Ok(())
     }
@@ -269,7 +261,7 @@ impl Visitor<()> for Resolver {
             if spClass.name.lexeme == val.name.lexeme {
                 return Err(LoxError::SemanticError("Class can't inherit itself".to_string(), val.name.lineNo))
             }
-            self.resolve_exp(&mut Expr::Variable(Box::new(spClass.clone())));
+            self.resolve(&mut Expr::Variable(Box::new(spClass.clone())));
             self.beginScope();
             self.scopes.last_mut().unwrap().insert("super".to_string(), true);
         }

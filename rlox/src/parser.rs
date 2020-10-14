@@ -142,12 +142,12 @@ impl Parser {
 
     fn breakStatement(&mut self) -> Result<Stmt, LoxError> {
         self.consume(TokenType::SEMICOLON, "Expect ';' after break.".to_string())?;
-        return Ok(Stmt::Break(Box::new(Break::new())))
+        return Ok(Stmt::Break(Box::new(Break::new(self.previous().clone()))))
     }
 
     fn continueStatement(&mut self) -> Result<Stmt, LoxError> {
         self.consume(TokenType::SEMICOLON, "Expect ';' after continue.".to_string())?;
-        return Ok(Stmt::Continue(Box::new(Continue::new())))
+        return Ok(Stmt::Continue(Box::new(Continue::new(self.previous().clone()))))
     }
 
     fn block(&mut self) -> Result<Vec<Stmt>, LoxError> {

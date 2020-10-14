@@ -1,8 +1,154 @@
-use  scanlex::{Scanner,self};
 use std::error::Error;
 use crate::runner::Runner;
+use std::fmt::Display;
 
 pub const empty_str: String = String::new();
+
+
+use logos::Logos;
+
+#[derive(Logos, Debug, PartialEq, Clone)]
+pub enum TokenType {
+    #[token("(")]
+    LEFT_PAREN,
+    
+    #[token(")")]
+    RIGHT_PAREN,
+    
+    #[token("{")]
+    LEFT_BRACE,
+    
+    #[token("}")]
+    RIGHT_BRACE,
+    
+    #[token(",")]
+    COMMA,
+    
+    #[token(".")]
+    DOT,
+    
+    #[token("-")]
+    MINUS,
+    
+    #[token("+")]
+    PLUS,
+    
+    #[token(";")]
+    SEMICOLON,
+    
+    #[token("/")]
+    SLASH,
+    
+    #[token("*")]
+    STAR,
+    
+    // One or two character tokens.
+    
+    #[token("!")]
+    BANG,
+    
+    #[token("!=")]
+    BANG_EQUAL,
+    
+    #[token("=")]
+    EQUAL,
+    
+    #[token("==")]
+    EQUAL_EQUAL,
+    
+    #[token(">")]
+    GREATER,
+    
+    #[token(">=")]
+    GREATER_EQUAL,
+    
+    #[token("<")]
+    LESS,
+    
+    #[token("<=")]
+    LESS_EQUAL,
+    
+    // Keywords.
+    
+    #[token("and")]
+    AND,
+    
+    #[token("class")]
+    CLASS,
+    
+    #[token("else")]
+    ELSE,
+    
+    #[token("false")]
+    FALSE,
+    
+    #[token("fun")]
+    FUN,
+    
+    #[token("for")]
+    FOR,
+    
+    #[token("if")]
+    IF,
+    
+    #[token("nil")]
+    NIL,
+    
+    #[token("or")]
+    OR,
+    
+    #[token("print")]
+    PRINT,
+    
+    #[token("return")]
+    RETURN,
+    
+    #[token("super")]
+    SUPER,
+    
+    #[token("this")]
+    THIS,
+    
+    #[token("true")]
+    TRUE,
+    
+    #[token("var")]
+    VAR,
+    
+    #[token("while")]
+    WHILE,
+    
+    #[token("break")]
+    BREAK,
+    
+    #[token("continue")]
+    CONTINUE,
+   
+    // Or regular expressions.
+    #[regex("[a-zA-Z]+[a-zA-Z0-9_]*")]
+    IDENTIFIER,
+       
+    // Or regular expressions.
+    #[regex("[0-9]+")]
+    NUMBER,
+       
+    // Or regular expressions.
+    #[regex("\"(?s:[^\"\\\\]|\\\\.)*\"")]
+    STRING,
+
+    #[regex("//(?s:[^\"\\\\]|\\\\.)*")]
+    COMMENTS,
+
+    // Logos requires one token variant to handle errors,
+    // it can be named anything you wish.
+    #[error]
+    // We can also use this variant to define whitespace,
+    // or any other matches we wish to skip.
+    #[regex(r"[ \t\n\f]+", logos::skip)]
+    Error,
+
+    EOF
+}
 
 // make return, break into another enum and extend
 #[derive(Debug,Clone)]
@@ -12,8 +158,8 @@ pub enum LoxError {
     RuntimeError(String, u32),
     SemanticError(String, u32),
     ReturnVal(Object),
-    BreakExc,
-    ContinueExc,
+    BreakExc(u32),
+    ContinueExc(u32),
 }
 
 impl LoxError {
@@ -23,6 +169,8 @@ impl LoxError {
             LoxError::ParserError(lex, line) => Runner::error(*line, lex, &format!("ParserError: {:?}", msg).to_string()),
             LoxError::RuntimeError(lex, line) => Runner::error(*line, lex, &format!("RuntimeError: {:?}", msg).to_string()),
             LoxError::SemanticError(lex, line) => Runner::error(*line, lex, &format!("SemanticError: {:?}", msg).to_string()),
+            LoxError::BreakExc(line) => Runner::error(*line, &"Break".to_string(), &format!("SemanticError: {:?}", msg).to_string()),
+            LoxError::ContinueExc(line) => Runner::error(*line, &"Continue".to_string(), &format!("SemanticError: {:?}", msg).to_string()),
             _ => {}
         }
     }
@@ -55,30 +203,15 @@ impl Literal {
     }
 }
 
-
-#[derive(Debug,Clone,Copy,PartialEq,Eq)]
-pub enum TokenType {
-
-    // Single-character tokens.
-    LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
-    COMMA, DOT, MINUS, PLUS, SEMICOLON, SLASH, STAR,
-  
-    // One or two character tokens.
-    BANG, BANG_EQUAL,
-    EQUAL, EQUAL_EQUAL,
-    GREATER, GREATER_EQUAL,
-    LESS, LESS_EQUAL,
-  
-    // Literals.
-    IDENTIFIER, STRING, NUMBER,
-  
-    // Keywords.
-    AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
-    PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
-    BREAK, CONTINUE,
-  
-    // 
-    EOF
+impl Display for Literal {   
+    fn fmt(&self, writer: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            Literal::NUM(val) => writer.write_str(&val.to_string()),
+            Literal::STRING(val) => writer.write_str(&val.to_string()),
+            Literal::BOOL(val) => writer.write_str(&val.to_string()),
+            Literal::NIL => writer.write_str("Nil"),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -131,90 +264,25 @@ impl Lexer {
 
     pub fn read_line(&mut self, line: &String) -> Result<Vec<Token>, LoxError> {
         let mut tokens = vec![];
-        for token in Scanner::new(line) {
-            match token {
-                scanlex::Token::Char(v) => {
-                    match v {
-                        '+' => tokens.push(Token::new(TokenType::PLUS,self.curr,None,empty_str)),
-                        '(' => tokens.push(Token::new(TokenType::LEFT_PAREN,self.curr,None,empty_str)),
-                        ')' => tokens.push(Token::new(TokenType::RIGHT_PAREN,self.curr,None,empty_str)),
-                        '{' => tokens.push(Token::new(TokenType::LEFT_BRACE,self.curr,None,empty_str)),
-                        '}' => tokens.push(Token::new(TokenType::RIGHT_BRACE,self.curr,None,empty_str)),
-                        ',' => tokens.push(Token::new(TokenType::COMMA,self.curr,None,empty_str)),
-                        '.' => tokens.push(Token::new(TokenType::DOT,self.curr,None,empty_str)),
-                        '-' => tokens.push(Token::new(TokenType::MINUS,self.curr,None,empty_str)),
-                        '+' => tokens.push(Token::new(TokenType::PLUS,self.curr,None,empty_str)),
-                        '*' => tokens.push(Token::new(TokenType::STAR,self.curr,None,empty_str)),
-                        // Prev value dependents
-                        '/' => {
-                            let cache = tokens.pop();
-                            if cache.is_none() {
-                                tokens.push(Token::new(TokenType::SLASH,self.curr,None,empty_str));
-                            } else if cache.unwrap().tokenType == TokenType::SLASH
-                            {
-                                return Ok(vec![])
-                            }
-                        }
-                        '=' => {
-                            let cache = tokens.pop();
-                            if cache.is_none() {
-                                tokens.push(Token::new(TokenType::EQUAL,self.curr,None,empty_str));
-                            } else {
-                                let cache = cache.unwrap();
-                                if cache.tokenType == TokenType::EQUAL {
-                                    tokens.push(Token::new(TokenType::EQUAL_EQUAL,self.curr,None,empty_str))
-                                } else if cache.tokenType == TokenType::BANG {
-                                    tokens.push(Token::new(TokenType::BANG_EQUAL,self.curr,None,empty_str))
-                                } else if cache.tokenType == TokenType::LESS {
-                                    tokens.push(Token::new(TokenType::LESS_EQUAL,self.curr,None,empty_str))
-                                } else if cache.tokenType == TokenType::GREATER {
-                                    tokens.push(Token::new(TokenType::GREATER_EQUAL,self.curr,None,empty_str))
-                                } else {
-                                    tokens.push(cache);
-                                    tokens.push(Token::new(TokenType::EQUAL,self.curr,None,empty_str));
-                                }
-                            }
-                        }
-                        '>' => tokens.push(Token::new(TokenType::GREATER,self.curr,None,empty_str)),
-                        '<' => tokens.push(Token::new(TokenType::LESS,self.curr,None,empty_str)),
-                        '!' => tokens.push(Token::new(TokenType::BANG,self.curr,None,empty_str)),
-                        ';' => tokens.push(Token::new(TokenType::SEMICOLON,self.curr,None,empty_str)),
-                        _ => {
-                            return Err(LoxError::ScannerError(format!("Unknown character: {}", v), self.curr))
-                        }
-                    }
-                },
-                scanlex::Token::Iden(v) => {
-                    match v.as_str() {
-                        "and" => tokens.push(Token::new(TokenType::AND,self.curr,None,empty_str)),
-                        "class" => tokens.push(Token::new(TokenType::CLASS,self.curr,None,empty_str)),
-                        "else" => tokens.push(Token::new(TokenType::ELSE,self.curr,None,empty_str)),
-                        "false" => tokens.push(Token::new(TokenType::FALSE,self.curr,None,empty_str)),
-                        "for" => tokens.push(Token::new(TokenType::FOR,self.curr,None,empty_str)),
-                        "fun" => tokens.push(Token::new(TokenType::FUN,self.curr,None,empty_str)),
-                        "if" => tokens.push(Token::new(TokenType::IF,self.curr,None,empty_str)),
-                        "nil" => tokens.push(Token::new(TokenType::NIL,self.curr,None,empty_str)),
-                        "or" => tokens.push(Token::new(TokenType::OR,self.curr,None,empty_str)),
-                        "print" => tokens.push(Token::new(TokenType::PRINT,self.curr,None,empty_str)),
-                        "return" => tokens.push(Token::new(TokenType::RETURN,self.curr,None,empty_str)),
-                        "super" => tokens.push(Token::new(TokenType::SUPER,self.curr,None,"super".to_string())),
-                        "this" => tokens.push(Token::new(TokenType::THIS,self.curr,None,"this".to_string())),
-                        "true" => tokens.push(Token::new(TokenType::TRUE,self.curr,None,empty_str)),
-                        "var" => tokens.push(Token::new(TokenType::VAR,self.curr,None,empty_str)),
-                        "while" => tokens.push(Token::new(TokenType::WHILE,self.curr,None,empty_str)),
-                        "break" => tokens.push(Token::new(TokenType::BREAK,self.curr,None,empty_str)),
-                        "continue" => tokens.push(Token::new(TokenType::CONTINUE,self.curr,None,empty_str)),
-                        _ => tokens.push(Token::new(TokenType::IDENTIFIER,self.curr,None,v))
-                    }
-                },
-                scanlex::Token::Str(v) => {tokens.push(Token::new(TokenType::STRING,self.curr,Some(Literal::STRING(v.clone())), v))},
-                scanlex::Token::Int(v) => {tokens.push(Token::new(TokenType::NUMBER,self.curr,Some(Literal::NUM(v as f64)), v.to_string()))},
-                scanlex::Token::Num(v) => {tokens.push(Token::new(TokenType::NUMBER,self.curr,Some(Literal::NUM(v)), v.to_string()))},
-                scanlex::Token::End => {tokens.push(Token::new(TokenType::EOF,self.curr,None,empty_str))},
-                scanlex::Token::Error(v) => {
-                    return Err(LoxError::ScannerError(v.description().to_string(), self.curr))
-                },
+        let mut lex = TokenType::lexer(&line);
+        //TODO: handle error tokens
+        while let Some(tk) = lex.next() {
+            // println!("{:?}: {}", tk, lex.slice());
+            if tk == TokenType::COMMENTS {
+                continue;
             }
+            let literal;
+            literal = match tk {
+                TokenType::TRUE => Some(Literal::BOOL(true)),
+                TokenType::FALSE => Some(Literal::BOOL(false)),
+                TokenType::STRING => Some(Literal::STRING(lex.slice().to_string())),
+                TokenType::NUMBER => Some(Literal::NUM(lex.slice().parse::<f64>().unwrap())),
+                _ => None,
+            };
+            tokens.push(Token::new(tk,
+                 self.curr,
+                 literal,
+                 lex.slice().to_string()))
         }
         return Ok(tokens);
     }

@@ -2,12 +2,13 @@ use std::path::Path;
 use std::fs::read_to_string;
 use std::io::{stdin, Read};
 use std::sync::atomic::{AtomicBool, Ordering};
-use crate::scanner::Lexer;
+use crate::scanner::{Lexer, TokenType};
 use crate::parser::Parser;
 // use crate::ast_printer::ASTprinter;
 use crate::interpreter::Interpreter;
 use crate::resolver::Resolver;
 static had_error: AtomicBool = AtomicBool::new(false);
+use logos::{Logos,source::Source};
 
 pub struct Runner {
     lexer: Lexer,
@@ -25,6 +26,12 @@ impl Runner {
     pub fn run_file(&mut self, path: &String) {
         let path = Path::new(path);
         let script = read_to_string(path).unwrap();
+        // let mut lex = TokenType::lexer(&script);
+        // while let Some(tk) = lex.next() {
+        //     println!("{:?}: {}", tk, lex.slice());
+        // }
+        // for it in lex {
+        // }
         self.run(&script);
     }
     
@@ -48,12 +55,6 @@ impl Runner {
                 let mut parser = Parser::new(tokens);
                 match parser.parse() {
                     Ok(mut ast) => {
-                        // match ast.accept(&mut ASTprinter{}) {
-                        //     Ok(mut val) => {
-                        //         println!("{}", val);
-                        //     },
-                        //     Err(err) => {println!("error: {:?}", err)},
-                        // }
                         let mut resolv = Resolver::new();
                         if let Err(err) = resolv.resolve(&mut ast) {
                             err.print_error("");

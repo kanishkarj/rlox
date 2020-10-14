@@ -1,0 +1,3 @@
+var a = "global glasdf";
+
+var f = 23423;

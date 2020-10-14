@@ -84,8 +84,8 @@ def main():
       "Print":["Expr:expr"],
         "Var": ["Token:name","Option<Expr>:initializer"],
         "While": ["Expr:condition","Stmt:body"],
-        "Break":[],
-        "Continue": [],
+        "Break":["Token:keyword"],
+        "Continue": ["Token:keyword"],
         "If":["Expr:condition","Stmt:thenBranch","Option<Stmt>:elseBranch"],
         "Return": ["Token:keyword","Option<Expr>:value"],
     });

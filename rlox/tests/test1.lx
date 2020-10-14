@@ -1,10 +1,10 @@
-// fun fib(n) {
+ //fun fib(n) {
+//   print n;
 //   if (n <= 1) return 1;
 //   return fib(n - 1) * n;
 // }
 
 // print fib(5) ;
-
 
 var a = "global" ;
 {
@@ -14,5 +14,6 @@ var a = "global" ;
 
   showA();
   var a = "block";
+  print a;
   showA();
 }

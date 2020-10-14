@@ -51,10 +51,14 @@ pub trait Visitor<R> {
     fn visitFunctionStmt (&mut self, expr: &mut Function) -> Result<R, LoxError>;
     fn visitReturnStmt (&mut self, expr: &mut Return) -> Result<R, LoxError>;
     fn visitClassStmt (&mut self, expr: &mut Class) -> Result<R, LoxError>;
- }
+}
 
-impl Expr::Expr {
-    pub fn accept<'a, T> (&mut self, vis: &mut dyn Visitor<T>) -> Result<T, LoxError> {
+pub trait VisAcceptor<T> : Sized {
+    fn accept (&mut self, vis: &mut dyn Visitor<T>) -> Result<T, LoxError>;
+}
+
+impl<T> VisAcceptor<T> for Expr::Expr {
+    fn accept (&mut self, vis: &mut dyn Visitor<T>) -> Result<T, LoxError> {
         match self {
             Expr::Expr::Binary(v) => {vis.visitBinaryExpr(v)}, 
             Expr::Expr::Grouping(v) => {vis.visitGroupingExpr(v)}, 
@@ -73,8 +77,8 @@ impl Expr::Expr {
         }
     }
 
-    impl Stmt::Stmt {
-        pub fn accept<'a, T> (&mut self, vis: &mut dyn Visitor<T>) -> Result<T, LoxError> {
+    impl<T> VisAcceptor<T> for Stmt::Stmt {
+        fn accept (&mut self, vis: &mut dyn Visitor<T>) -> Result<T, LoxError> {
             match self {
                 Stmt::Stmt::Expression(v) => {vis.visitExpressionStmt(v)}, 
                 Stmt::Stmt::Print(v) => {vis.visitPrintStmt(v)},
@@ -90,6 +94,15 @@ impl Expr::Expr {
             }
             }
         }
+
+        impl<T,X> VisAcceptor<T> for Vec<X> where X: Sized + VisAcceptor<T>, T: Default {
+            fn accept (&mut self, vis: &mut dyn Visitor<T>) -> Result<T, LoxError> {
+                for stm in self.iter_mut() {
+                    stm.accept(vis)?;
+                }
+                return Ok(T::default())
+            }
+            }
         pub trait LoxCallable: LoxCallableClone {
             fn call(&mut self, interpreter: &mut Interpreter, args: Vec<Object>) -> Result<Object, LoxError>;
             fn arity(&self) -> usize;
@@ -195,7 +208,7 @@ impl Expr::Expr {
 
         #[derive(Debug, Clone)]
         pub struct LoxClass {
-            name: String,
+            pub name: String,
             methods: Rc<HashMap<String, Rc<LoxFunction>>>,
             superClass: Option<Rc<RefCell<LoxClass>>>
         }

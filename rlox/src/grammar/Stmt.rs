@@ -142,13 +142,15 @@ body,
 
 #[derive(Debug, Clone)] 
 pub struct Break { 
+   pub keyword: Token, 
 } 
 
 impl Break { 
 
-        pub fn new() -> Self {
+        pub fn new(keyword: Token,) -> Self {
             Self {
-                
+                keyword,
+
             }
         }
 
@@ -156,13 +158,15 @@ impl Break {
 
 #[derive(Debug, Clone)] 
 pub struct Continue { 
+   pub keyword: Token, 
 } 
 
 impl Continue { 
 
-        pub fn new() -> Self {
+        pub fn new(keyword: Token,) -> Self {
             Self {
-                
+                keyword,
+
             }
         }
 

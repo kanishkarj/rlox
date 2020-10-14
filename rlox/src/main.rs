@@ -2,7 +2,6 @@ mod runner;
 mod scanner;
 mod interpreter;
 mod grammar;
-mod ast_printer;
 mod parser;
 mod environment;
 mod resolver;
