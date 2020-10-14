@@ -104,7 +104,7 @@ impl<T> VisAcceptor<T> for Expr::Expr {
             }
             }
         pub trait LoxCallable: LoxCallableClone {
-            fn call(&mut self, interpreter: &mut Interpreter, args: Vec<Object>) -> Result<Object, LoxError>;
+            fn call(&self, interpreter: &mut Interpreter, args: Vec<Object>) -> Result<Object, LoxError>;
             fn arity(&self) -> usize;
         }
         
@@ -136,7 +136,7 @@ impl<T> VisAcceptor<T> for Expr::Expr {
 
         #[derive(Debug, Clone)]
         pub struct LoxFunction {
-            declaration: Function,
+            declaration: RefCell<Function>,
             closure: Environment,
             isInit: bool,
         }
@@ -144,27 +144,27 @@ impl<T> VisAcceptor<T> for Expr::Expr {
         impl LoxFunction {
             pub fn new(declaration: Function, closure: Environment, isInit: bool) -> Self {
                 LoxFunction {
-                    declaration,
+                    declaration: RefCell::new(declaration),
                     closure,
                     isInit
                 }
             }
-            pub fn bind(&self, inst: Rc<RefCell<LoxInstance>>) -> Self {
+            pub fn bind(&self, inst: Rc<LoxInstance>) -> Self {
                 let mut env = Environment::build(self.closure.clone());
                 env.define("this".to_string(), Object::Instance(inst));
-                LoxFunction::new(self.declaration.clone(), env, self.isInit)
+                LoxFunction::new(self.declaration.borrow().clone(), env, self.isInit)
             }
         }
 
         impl LoxCallable for LoxFunction {
             
-                fn arity(&self) -> usize { self.declaration.params.len()}
-                fn call(&mut self, intrprt: &mut Interpreter, args:Vec<Object>) -> Result<Object, LoxError> { 
+                fn arity(&self) -> usize { self.declaration.borrow().params.len()}
+                fn call(&self, intrprt: &mut Interpreter, args:Vec<Object>) -> Result<Object, LoxError> { 
                     let mut env = Environment::build(self.closure.clone());
-                    for (param,arg) in self.declaration.params.iter().zip(args) {
+                    for (param,arg) in self.declaration.borrow().params.iter().zip(args) {
                         env.define(param.lexeme.clone(), arg);
                     }
-                    let val = intrprt.executeBlock(&mut self.declaration.body, env);
+                    let val = intrprt.executeBlock(&mut self.declaration.borrow_mut().body, env);
                     if let Err(LoxError::ReturnVal(val)) = val {
                         if self.isInit {
                             return Ok(self.closure.getAt("this".to_string(), 0).unwrap_or(Object::Nil))
@@ -180,14 +180,14 @@ impl<T> VisAcceptor<T> for Expr::Expr {
 
         #[derive(Debug, Clone)]
         pub struct LoxLambda {
-            declaration: Lambda,
+            declaration: RefCell<Lambda>,
             closure: Environment,
         }
 
         impl LoxLambda {
             pub fn new(declaration: Lambda, closure: Environment) -> Self {
                 LoxLambda {
-                    declaration,
+                    declaration: RefCell::new(declaration),
                     closure
                 }
             }
@@ -195,13 +195,13 @@ impl<T> VisAcceptor<T> for Expr::Expr {
 
         impl LoxCallable for LoxLambda {
             
-                fn arity(&self) -> usize { self.declaration.params.len()}
-                fn call(&mut self, intrprt: &mut Interpreter, args:Vec<Object>) -> Result<Object, LoxError> { 
+                fn arity(&self) -> usize { self.declaration.borrow().params.len()}
+                fn call(&self, intrprt: &mut Interpreter, args:Vec<Object>) -> Result<Object, LoxError> { 
                     let mut env = Environment::build(self.closure.clone());
-                    for (param,arg) in self.declaration.params.iter().zip(args) {
+                    for (param,arg) in self.declaration.borrow().params.iter().zip(args) {
                         env.define(param.lexeme.clone(), arg);
                     }
-                    let val = intrprt.executeBlock(&mut self.declaration.body, env)?;
+                    let val = intrprt.executeBlock(&mut self.declaration.borrow_mut().body, env)?;
                     Ok(val)
                 }
         } 
@@ -210,11 +210,11 @@ impl<T> VisAcceptor<T> for Expr::Expr {
         pub struct LoxClass {
             pub name: String,
             methods: Rc<HashMap<String, Rc<LoxFunction>>>,
-            superClass: Option<Rc<RefCell<LoxClass>>>
+            superClass: Option<Rc<LoxClass>>
         }
 
         impl LoxClass {
-            pub fn new(name: String, methods: Rc<HashMap<String, Rc<LoxFunction>>>, superClass: Option<Rc<RefCell<LoxClass>>>) -> Self {
+            pub fn new(name: String, methods: Rc<HashMap<String, Rc<LoxFunction>>>, superClass: Option<Rc<LoxClass>>) -> Self {
                 LoxClass{name, methods, superClass}
             }
             pub fn findMethod(&self, name: &String) -> Option<Rc<LoxFunction>> {
@@ -222,17 +222,17 @@ impl<T> VisAcceptor<T> for Expr::Expr {
                     return Some(mth).cloned();
                 } else {
                     if let Some(superClass) = &self.superClass {
-                        let x = superClass.borrow().findMethod(name);
+                        let x = superClass.findMethod(name);
                     }
                 }
                 None
             }
-            pub fn bind_method(&self, name: &Token, instance: Rc<RefCell<LoxInstance>>) -> Result<Rc<RefCell<LoxFunction>>, LoxError> {
+            pub fn bind_method(&self, name: &Token, instance: Rc<LoxInstance>) -> Result<Rc<LoxFunction>, LoxError> {
                 if let Some(mth) = self.methods.get(&name.lexeme) {
-                    return Ok(Rc::new(RefCell::new(mth.bind(instance))))
+                    return Ok(Rc::new(mth.bind(instance)))
                 } else if let Some(superClass) = &self.superClass {
-                    if let Some(mth) = superClass.borrow().findMethod(&name.lexeme) {
-                        return Ok(Rc::new(RefCell::new(mth.bind(instance))))
+                    if let Some(mth) = superClass.findMethod(&name.lexeme) {
+                        return Ok(Rc::new(mth.bind(instance)))
                     }
                 }
                 
@@ -248,8 +248,8 @@ impl<T> VisAcceptor<T> for Expr::Expr {
                     0
                 }
             }
-            fn call(&mut self, intrprt: &mut Interpreter, args:Vec<Object>) -> Result<Object, LoxError> { 
-                let instance = Rc::new(RefCell::new(LoxInstance::new(self.clone())));
+            fn call(&self, intrprt: &mut Interpreter, args:Vec<Object>) -> Result<Object, LoxError> { 
+                let instance = Rc::new(LoxInstance::new(self.clone()));
                 if let Some(init) = self.findMethod(&"init".to_string()) {
                     init.bind(Rc::clone(&instance)).call(intrprt, args)?;
                 }

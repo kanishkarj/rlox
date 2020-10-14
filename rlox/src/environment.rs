@@ -68,7 +68,7 @@ impl Environment {
         }
     }
     
-    pub fn ancestor(&mut self, hops: usize) -> Option<Environment> {
+    pub fn ancestor(&self, hops: usize) -> Option<Environment> {
         return if hops == 0 {
             Some(self.clone())
         } else if let Some(env) = &mut self.env.borrow_mut().parent {
@@ -78,33 +78,33 @@ impl Environment {
         }
     }
     
-    pub fn assign(&mut self, name: String, val: Object) -> bool {
+    pub fn assign(&self, name: String, val: Object) -> bool {
         self.env.borrow_mut().assign(name, val)
     }
 
-    pub fn get(&mut self, name: String) -> Option<Object> {
+    pub fn get(&self, name: String) -> Option<Object> {
         self.env.borrow_mut().get(name)   
     }
 
-    pub fn getAt(&mut self, name: String, hops: usize) -> Option<Object> {
+    pub fn getAt(&self, name: String, hops: usize) -> Option<Object> {
         if let Some(env) =  &mut self.ancestor(hops) {
             return env.get(name)
         }
         None
     }
 
-    pub fn assignAt(&mut self, name: String, val: Object, hops: usize) -> bool {
+    pub fn assignAt(&self, name: String, val: Object, hops: usize) -> bool {
         if let Some(env) =  &mut self.ancestor(hops) {
             return env.assign(name, val)
         }
         false
     }
 
-    pub fn define(&mut self, name: String, val: Object) {
+    pub fn define(&self, name: String, val: Object) {
         self.env.borrow_mut().define(name, val)
     }
 
-    pub fn defineAt(&mut self, name: String, val: Object, hops: usize) {
+    pub fn defineAt(&self, name: String, val: Object, hops: usize) {
         if let Some(env) =  &mut self.ancestor(hops) {
             env.define(name, val)
         }

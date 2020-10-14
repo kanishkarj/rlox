@@ -19,9 +19,9 @@ pub enum Object {
     Num(f64),
     Bool(bool),
     Nil,
-    Function(Rc<RefCell<dyn LoxCallable>>),
-    Class(Rc<RefCell<LoxClass>>),
-    Instance(Rc<RefCell<LoxInstance>>),
+    Function(Rc<dyn LoxCallable>),
+    Class(Rc<LoxClass>),
+    Instance(Rc<LoxInstance>),
 }
 
 impl Display for Object {
@@ -32,8 +32,8 @@ impl Display for Object {
             Object::Bool(val) => writer.write_str(&val.to_string()), 
             Object::Nil => writer.write_str("Nil"),
             Object::Function(val) => writer.write_str("Function"), 
-            Object::Class(val) => writer.write_str(&val.borrow().name), 
-            Object::Instance(val) => writer.write_fmt(format_args!("Instance<{}>", &val.borrow().klass.name)), 
+            Object::Class(val) => writer.write_str(&val.name), 
+            Object::Instance(val) => writer.write_fmt(format_args!("Instance<{}>", &val.klass.name)), 
         }
     }
 }
@@ -47,7 +47,7 @@ pub struct Interpreter {
 struct ClockFunc;
 
 impl LoxCallable for ClockFunc {
-    fn call(&mut self, intr: &mut Interpreter, args: Vec<Object>) -> Result<Object, LoxError> { 
+    fn call(&self, intr: &mut Interpreter, args: Vec<Object>) -> Result<Object, LoxError> { 
         let curr_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
         Ok(Object::Num(curr_time.as_millis() as f64))
     }
@@ -215,11 +215,11 @@ impl Visitor<Object> for Interpreter {
         
         let obj = self.evaluate(&mut val.object)?;
         if let Object::Instance(inst) = obj {
-            if let Some(val) = inst.borrow().get(&val.name) {
+            if let Some(val) = inst.get(&val.name) {
                 return Ok(val);
             } else {
                 return Ok(Object::Function(
-                    inst.borrow().klass.bind_method(&val.name, Rc::clone(&inst))?
+                    inst.klass.bind_method(&val.name, Rc::clone(&inst))?
                 ));
             }
         }
@@ -230,7 +230,7 @@ impl Visitor<Object> for Interpreter {
         let mut obj = self.evaluate(&mut val.object)?;
         if let Object::Instance(obj) = &mut obj {
             let value = self.evaluate(&mut val.value)?;
-            obj.borrow().set(&val.name, value.clone());
+            obj.set(&val.name, value.clone());
             return Ok(value)
         } else {
             return Err(LoxError::RuntimeError("Only Instances have feilds".to_string(), val.name.lineNo))
@@ -309,7 +309,7 @@ impl Visitor<Object> for Interpreter {
 
     fn visitLambdaExpr(&mut self, val: &mut Lambda) -> Result<Object, LoxError> { 
         let func = LoxLambda::new(val.clone(), self.env.clone());
-        return Ok(Object::Function(Rc::new(RefCell::new(func))))
+        return Ok(Object::Function(Rc::new(func)))
     }
 
     fn visitWhileStmt(&mut self, val: &mut While) -> Result<Object, LoxError> {
@@ -339,7 +339,7 @@ impl Visitor<Object> for Interpreter {
             args.push(self.evaluate(arg)?);
         }
 
-        let mut fn_def: Rc<RefCell<dyn LoxCallable>>;
+        let mut fn_def: Rc<dyn LoxCallable>;
 
         if let Object::Function(callee) = callee {
             fn_def = callee;
@@ -349,10 +349,10 @@ impl Visitor<Object> for Interpreter {
             return Err(LoxError::RuntimeError("Not a function".to_string(), val.paren.lineNo))
         }
 
-        if args.len()  != fn_def.borrow().arity() {
+        if args.len()  != fn_def.arity() {
             return Err(LoxError::RuntimeError("No. of args don't match".to_string(), val.paren.lineNo))
         }
-        return fn_def.borrow_mut().call(self, args);
+        return fn_def.call(self, args);
     }
 
     fn visitThisExpr (&mut self, val: &mut This) -> Result<Object, LoxError> {
@@ -361,7 +361,7 @@ impl Visitor<Object> for Interpreter {
 
     fn visitFunctionStmt(&mut self, val: &mut Function) -> Result<Object, LoxError> {
         let func = LoxFunction::new(val.clone(), self.env.clone(), false);
-        self.env.define(val.name.lexeme.clone(), Object::Function(Rc::new(RefCell::new(func))));
+        self.env.define(val.name.lexeme.clone(), Object::Function(Rc::new(func)));
         return Ok(Object::Nil)
     }
 
@@ -394,7 +394,7 @@ impl Visitor<Object> for Interpreter {
             methods.insert(method.name.lexeme.clone(), func);
         }
 
-        let klass = Object::Class(Rc::new(RefCell::new(LoxClass::new(val.name.lexeme.clone(), Rc::new(methods), superClass))));
+        let klass = Object::Class(Rc::new(LoxClass::new(val.name.lexeme.clone(), Rc::new(methods), superClass)));
         self.env.assign(val.name.lexeme.clone(), klass);
         return Ok(Object::Nil);
     }
@@ -407,8 +407,8 @@ impl Visitor<Object> for Interpreter {
             
             if let Object::Class(superClass) = superClass {
                 if let Object::Instance(thisObj) = thisObj {
-                    if let Some(method) = superClass.borrow().findMethod(&val.method.lexeme) {
-                        return Ok(Object::Function(Rc::new(RefCell::new(method.bind(Rc::clone(&thisObj))))))
+                    if let Some(method) = superClass.findMethod(&val.method.lexeme) {
+                        return Ok(Object::Function(Rc::new(method.bind(Rc::clone(&thisObj)))))
                     }
                 }
             }
@@ -421,7 +421,7 @@ impl Interpreter
 {
     pub fn new() -> Self {
         let mut env = Environment::new();
-        env.define("time".to_string(), Object::Function(Rc::new(RefCell::new(ClockFunc{}))));
+        env.define("time".to_string(), Object::Function(Rc::new(ClockFunc{})));
         Interpreter {
             env:            env.clone(),
             global: env
@@ -481,24 +481,9 @@ impl Interpreter
             let val = self.evaluate(stmt);
             match val {
                 Ok(_) => {},
-                Err(err) => err.print_error("Error Intepreting"),
+                Err(err) => {err.print_error("Error Intepreting"); return},
             }
         }
     }
 
 }
-
-// pub fn test() {
-//     let mut sample = Expr::Binary(Box::new(Binary::new(
-//         Expr::Unary(Box::new(Unary::new(
-//             Token::new(TokenType::MINUS, 0, empty_str), 
-//             Expr::Literal(Box::new(Literal::new(String::from("123"), LiteralTypes::Num)))
-//         ))), 
-//         Token::new(TokenType::STAR, 0, empty_str), 
-//         Expr::Grouping(Box::new(Grouping::new(
-//             Expr::Literal(Box::new(Literal::new(String::from("45.7"), LiteralTypes::Num))))
-//         ))
-//     )));
-//     let mut interpreter = Interpreter{};
-//     // println!("{}",sample.accept(&mut Interpreter));
-// }
