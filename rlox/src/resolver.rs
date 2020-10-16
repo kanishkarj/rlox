@@ -4,7 +4,7 @@ use crate::scanner::*;
 use std::fmt::Debug;
 use crate::runner::Runner;
 
-use crate::grammar::{Visitor, LoxClass, LoxCallable, LoxFunction, LoxInstance, LoxLambda, FunctionType, ClassType, VisAcceptor};
+use crate::grammar::{VisitorMut, LoxClass, LoxCallable, LoxFunction, LoxInstance, LoxLambda, FunctionType, ClassType, VisitorMutAcceptor};
 use crate::environment::Environment;
 
 use std::collections::HashMap;
@@ -28,7 +28,7 @@ impl Resolver {
         }
     }
 
-    pub fn resolve<T: VisAcceptor<()> + Sized> (&mut self, expr: &mut T) -> Result<(), LoxError>
+    pub fn resolve<T: VisitorMutAcceptor<()> + Sized> (&mut self, expr: &mut T) -> Result<(), LoxError>
     {
         expr.accept(self)
     }
@@ -92,7 +92,7 @@ impl Resolver {
 }
 
 
-impl Visitor<()> for Resolver {
+impl VisitorMut<()> for Resolver {
 
     fn visitBinaryExpr (&mut self, val: &mut Binary) -> Result<(), LoxError> {
         self.resolve(&mut val.left)?;

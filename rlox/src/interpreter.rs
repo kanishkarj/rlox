@@ -55,9 +55,9 @@ impl LoxCallable for ClockFunc {
 }
 
 impl Visitor<Object> for Interpreter {
-    fn visitBinaryExpr(&mut self, val: &mut Binary) -> Result<Object, LoxError> {
-        let mut right = self.evaluate(&mut val.right)?;
-        let mut left = self.evaluate(&mut val.left)?;
+    fn visitBinaryExpr(&mut self, val: &Binary) -> Result<Object, LoxError> {
+        let mut right = self.evaluate(&val.right)?;
+        let mut left = self.evaluate(&val.left)?;
 
         match val.operator.tokenType {
             TokenType::MINUS => {
@@ -184,16 +184,16 @@ impl Visitor<Object> for Interpreter {
         }
     }
 
-    fn visitGroupingExpr(&mut self, val: &mut Grouping) -> Result<Object, LoxError> { 
-        self.evaluate(&mut val.expression)
+    fn visitGroupingExpr(&mut self, val: &Grouping) -> Result<Object, LoxError> { 
+        self.evaluate(&val.expression)
     }
 
-    fn visitLiteralExpr(&mut self, val: &mut Literal) -> Result<Object, LoxError> { 
+    fn visitLiteralExpr(&mut self, val: &Literal) -> Result<Object, LoxError> { 
         Ok(val.clone().to_object())
     }
     
-    fn visitUnaryExpr(&mut self, val: &mut Unary) -> Result<Object, LoxError> { 
-        let right = self.evaluate(&mut val.right)?;
+    fn visitUnaryExpr(&mut self, val: &Unary) -> Result<Object, LoxError> { 
+        let right = self.evaluate(&val.right)?;
 
         Ok(
             match val.operator.tokenType {
@@ -211,9 +211,9 @@ impl Visitor<Object> for Interpreter {
         )
     }
     
-    fn visitGetExpr(&mut self, val: &mut Get) -> Result<Object, LoxError> { 
+    fn visitGetExpr(&mut self, val: &Get) -> Result<Object, LoxError> { 
         
-        let obj = self.evaluate(&mut val.object)?;
+        let obj = self.evaluate(&val.object)?;
         if let Object::Instance(inst) = obj {
             if let Some(val) = inst.get(&val.name) {
                 return Ok(val);
@@ -226,10 +226,10 @@ impl Visitor<Object> for Interpreter {
         Err(LoxError::RuntimeError("Only Instance have properties".to_string(), val.name.lineNo))
     }
 
-    fn visitSetExpr(&mut self, val: &mut Set) -> Result<Object, LoxError> {
-        let mut obj = self.evaluate(&mut val.object)?;
+    fn visitSetExpr(&mut self, val: &Set) -> Result<Object, LoxError> {
+        let mut obj = self.evaluate(&val.object)?;
         if let Object::Instance(obj) = &mut obj {
-            let value = self.evaluate(&mut val.value)?;
+            let value = self.evaluate(&val.value)?;
             obj.set(&val.name, value.clone());
             return Ok(value)
         } else {
@@ -237,19 +237,19 @@ impl Visitor<Object> for Interpreter {
         }
     }
 
-    fn visitPrintStmt(&mut self, val: &mut Print) -> std::result::Result<Object, LoxError> { 
-        let val = self.evaluate(&mut val.expr)?;
+    fn visitPrintStmt(&mut self, val: &Print) -> std::result::Result<Object, LoxError> { 
+        let val = self.evaluate(&val.expr)?;
         println!("[print] {}", val);
         return Ok(val)
     }
     
-    fn visitExpressionStmt(&mut self, val: &mut Expression) -> Result<Object, LoxError> { 
-        self.evaluate(&mut val.expr)    
+    fn visitExpressionStmt(&mut self, val: &Expression) -> Result<Object, LoxError> { 
+        self.evaluate(&val.expr)    
     }
 
-    fn visitVarStmt(&mut self, val: &mut Var) -> Result<Object, LoxError> { 
+    fn visitVarStmt(&mut self, val: &Var) -> Result<Object, LoxError> { 
         let mut value = Object::Nil;
-        if let Some(var) = &mut val.initializer {
+        if let Some(var) = &val.initializer {
             value = self.evaluate(var)?;
         }
         if let Some(dist) = val.name.scope {
@@ -260,11 +260,11 @@ impl Visitor<Object> for Interpreter {
         return Ok(Object::Nil)
      }
 
-    fn visitVariableStmt(&mut self, val: &mut Variable) -> Result<Object, LoxError> {
-        self.variableLookup(&mut val.name)
+    fn visitVariableStmt(&mut self, val: &Variable) -> Result<Object, LoxError> {
+        self.variableLookup(&val.name)
     }
-    fn visitAssignStmt(&mut self, val: &mut Assign) -> Result<Object, LoxError> { 
-        let value = self.evaluate(&mut val.value)?;
+    fn visitAssignStmt(&mut self, val: &Assign) -> Result<Object, LoxError> { 
+        let value = self.evaluate(&val.value)?;
         if !(if let Some(dist) = val.name.scope {
             self.env.assignAt(val.name.lexeme.clone(), value.clone(), dist)
         } else {
@@ -275,24 +275,24 @@ impl Visitor<Object> for Interpreter {
         
         return Ok(value)
      }
-    fn visitBlockStmt(&mut self, val: &mut Block) -> Result<Object, LoxError> {
+    fn visitBlockStmt(&mut self, val: &Block) -> Result<Object, LoxError> {
         let env = Environment::build(self.env.clone());
-        return self.executeBlock(&mut val.statements, env);
+        return self.executeBlock(&val.statements, env);
     }
 
-    fn visitIfStmt(&mut self, val: &mut If) -> Result<Object, LoxError> { 
-        if let Object::Bool(truthy) = self.evaluate(&mut val.condition)? {
+    fn visitIfStmt(&mut self, val: &If) -> Result<Object, LoxError> { 
+        if let Object::Bool(truthy) = self.evaluate(&val.condition)? {
             if truthy {
-                self.evaluate(&mut val.thenBranch)?;
-            } else if let Some(stmt) = &mut val.elseBranch {
+                self.evaluate(&val.thenBranch)?;
+            } else if let Some(stmt) = &val.elseBranch {
                 self.evaluate(stmt)?;
             }
         }
         return Ok(Object::Nil);
     }
 
-    fn visitLogicalExpr(&mut self, val: &mut Logical) -> Result<Object, LoxError> { 
-        let left = self.evaluate(&mut val.left)?;
+    fn visitLogicalExpr(&mut self, val: &Logical) -> Result<Object, LoxError> { 
+        let left = self.evaluate(&val.left)?;
 
         if val.operator.tokenType == TokenType::OR {
             if self.isTrue(&left) {
@@ -304,38 +304,38 @@ impl Visitor<Object> for Interpreter {
             }
         }
 
-        self.evaluate(&mut val.right)
+        self.evaluate(&val.right)
     }
 
-    fn visitLambdaExpr(&mut self, val: &mut Lambda) -> Result<Object, LoxError> { 
+    fn visitLambdaExpr(&mut self, val: &Lambda) -> Result<Object, LoxError> { 
         let func = LoxLambda::new(val.clone(), self.env.clone());
         return Ok(Object::Function(Rc::new(func)))
     }
 
-    fn visitWhileStmt(&mut self, val: &mut While) -> Result<Object, LoxError> {
-        let mut res = self.evaluate(&mut val.condition)?;
+    fn visitWhileStmt(&mut self, val: &While) -> Result<Object, LoxError> {
+        let mut res = self.evaluate(&val.condition)?;
         while self.isTrue(&res) {
-            match self.evaluate(&mut val.body) {
+            match self.evaluate(&val.body) {
                 Err(LoxError::BreakExc(_)) => break,
                 Err(LoxError::ContinueExc(_)) => continue,
                 _ => {}
             }
-            res = self.evaluate(&mut val.condition)?;
+            res = self.evaluate(&val.condition)?;
         }
         return Ok(Object::Nil);
     }
 
-    fn visitBreakStmt(&mut self, val: &mut Break) -> Result<Object, LoxError> {
+    fn visitBreakStmt(&mut self, val: &Break) -> Result<Object, LoxError> {
         Err(LoxError::BreakExc(val.keyword.lineNo))
     }
-    fn visitContinueStmt(&mut self, val: &mut Continue) -> Result<Object, LoxError> {
+    fn visitContinueStmt(&mut self, val: &Continue) -> Result<Object, LoxError> {
         Err(LoxError::ContinueExc(val.keyword.lineNo))
     }
     
-    fn visitCallExpr(&mut self, val: &mut Call) -> Result<Object, LoxError> {
-        let callee = self.evaluate(&mut val.callee)?;
+    fn visitCallExpr(&mut self, val: &Call) -> Result<Object, LoxError> {
+        let callee = self.evaluate(&val.callee)?;
         let mut args = Vec::new();
-        for arg in &mut val.arguments {
+        for arg in &val.arguments {
             args.push(self.evaluate(arg)?);
         }
 
@@ -355,27 +355,27 @@ impl Visitor<Object> for Interpreter {
         return fn_def.call(self, args);
     }
 
-    fn visitThisExpr (&mut self, val: &mut This) -> Result<Object, LoxError> {
-        self.variableLookup(&mut val.keyword)
+    fn visitThisExpr (&mut self, val: &This) -> Result<Object, LoxError> {
+        self.variableLookup(&val.keyword)
     }
 
-    fn visitFunctionStmt(&mut self, val: &mut Function) -> Result<Object, LoxError> {
+    fn visitFunctionStmt(&mut self, val: &Function) -> Result<Object, LoxError> {
         let func = LoxFunction::new(val.clone(), self.env.clone(), false);
         self.env.define(val.name.lexeme.clone(), Object::Function(Rc::new(func)));
         return Ok(Object::Nil)
     }
 
-    fn visitReturnStmt(&mut self, val: &mut Return) -> Result<Object, LoxError> {
+    fn visitReturnStmt(&mut self, val: &Return) -> Result<Object, LoxError> {
         let mut retValue = Object::Nil;
-        if let Some(value) = &mut val.value {
+        if let Some(value) = &val.value {
             retValue = self.evaluate(value)?;
         }
         return Err(LoxError::ReturnVal(retValue))
     }
 
-    fn visitClassStmt(&mut self, val: &mut Class) -> Result<Object, LoxError> {
+    fn visitClassStmt(&mut self, val: &Class) -> Result<Object, LoxError> {
         let mut superClass = None;
-        if let Some(spClass) = &mut val.superclass {
+        if let Some(spClass) = &val.superclass {
             if let Object::Class(value) = &self.visitVariableStmt(spClass)?{
                 superClass = Some(Rc::clone(value));
                 self.env = Environment::build(self.env.clone());
@@ -399,7 +399,7 @@ impl Visitor<Object> for Interpreter {
         return Ok(Object::Nil);
     }
 
-    fn visitSuperExpr(&mut self, val: &mut Super) -> Result<Object, LoxError> {
+    fn visitSuperExpr(&mut self, val: &Super) -> Result<Object, LoxError> {
         let err = LoxError::RuntimeError("Only Instance have properties".to_string(), val.keyword.lineNo);
         if let Some(dist) = val.keyword.scope {
             let superClass = self.env.getAt("super".to_string(), dist).ok_or(err.clone())?;
@@ -428,7 +428,7 @@ impl Interpreter
         }
     }
 
-    pub fn executeBlock(&mut self, stmts: &mut Vec<Stmt>, env: Environment) -> Result<Object, LoxError>
+    pub fn executeBlock(&mut self, stmts: &Vec<Stmt>, env: Environment) -> Result<Object, LoxError>
         where Self: Visitor<Object>
     {
         let prev = std::mem::replace(&mut self.env, env);
@@ -456,7 +456,7 @@ impl Interpreter
         }
     }
 
-    fn variableLookup(&mut self, name: &mut Token) -> Result<Object, LoxError>
+    fn variableLookup(&mut self, name: &Token) -> Result<Object, LoxError>
         where Self: Visitor<Object>
     {
         let err = LoxError::RuntimeError("Undefined get".to_string(), name.lineNo);
@@ -468,7 +468,7 @@ impl Interpreter
         
     }
 
-    fn evaluate<T: VisAcceptor<Object> + Sized> (&mut self, expr: &mut T) -> Result<Object, LoxError>
+    fn evaluate<T: VisAcceptor<Object> + Sized> (&mut self, expr: &T) -> Result<Object, LoxError>
         where Self: Visitor<Object>
     {
         expr.accept(self)
