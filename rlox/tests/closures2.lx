@@ -1,0 +1,12 @@
+
+fun thrice(fn) {
+  for (var i = 2; i <= 5; i = i + 1) {
+    fn(i);
+  }
+}
+
+var t = fun ( a ) {
+  print a ;
+} ;
+
+thrice ( t ) ;

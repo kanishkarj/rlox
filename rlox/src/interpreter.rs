@@ -263,6 +263,7 @@ impl Visitor<Object> for Interpreter {
     fn visitVariableStmt(&mut self, val: &Variable) -> Result<Object, LoxError> {
         self.variableLookup(&val.name)
     }
+    
     fn visitAssignStmt(&mut self, val: &Assign) -> Result<Object, LoxError> { 
         let value = self.evaluate(&val.value)?;
         if !(if let Some(dist) = val.name.scope {
@@ -275,6 +276,7 @@ impl Visitor<Object> for Interpreter {
         
         return Ok(value)
      }
+
     fn visitBlockStmt(&mut self, val: &Block) -> Result<Object, LoxError> {
         let env = Environment::build(self.env.clone());
         return self.executeBlock(&val.statements, env);
@@ -339,7 +341,7 @@ impl Visitor<Object> for Interpreter {
             args.push(self.evaluate(arg)?);
         }
 
-        let mut fn_def: Rc<dyn LoxCallable>;
+        let fn_def: Rc<dyn LoxCallable>;
 
         if let Object::Function(callee) = callee {
             fn_def = callee;
@@ -352,7 +354,8 @@ impl Visitor<Object> for Interpreter {
         if args.len()  != fn_def.arity() {
             return Err(LoxError::RuntimeError("No. of args don't match".to_string(), val.paren.lineNo))
         }
-        return fn_def.call(self, args);
+        let x = fn_def.call(self, args);
+        return x;
     }
 
     fn visitThisExpr (&mut self, val: &This) -> Result<Object, LoxError> {

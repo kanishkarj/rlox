@@ -17,6 +17,7 @@ pub enum FunctionType {
     METHOD,
     INITIALIZER,
     NONE,
+    LAMBDA
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -294,8 +295,11 @@ impl LoxCallable for LoxLambda {
         for (param, arg) in self.declaration.borrow().params.iter().zip(args) {
             env.define(param.lexeme.clone(), arg);
         }
-        let val = intrprt.executeBlock(&self.declaration.borrow_mut().body, env)?;
-        Ok(val)
+        let val = intrprt.executeBlock(&self.declaration.borrow_mut().body, env);
+        if let Err(LoxError::ReturnVal(val)) = val {
+            return Ok(val);
+        }
+        val
     }
 }
 

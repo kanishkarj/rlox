@@ -81,12 +81,16 @@ impl Resolver {
 
     fn resolveLambda(&mut self, func: &mut Lambda) -> Result<(), LoxError>  {
         self.beginScope();
+        let currfn = self.currFunction;
+        self.currFunction = FunctionType::LAMBDA;
+
         for param in &func.params {
             self.declare(&param);
             self.define(&param)?;
         }
         self.resolve(&mut func.body)?;
         self.endScope();
+        self.currFunction = currfn;
         Ok(())
     }
 }
