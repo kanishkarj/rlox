@@ -34,7 +34,6 @@ impl Resolver {
     }
 
     fn resolveLocal(&mut self, name: &mut Token) {
-
         for (i,scope) in self.scopes.iter().enumerate().rev() {
             if scope.contains_key(&name.lexeme) {
                 name.scope = Some(self.scopes.len() - 1 - i);
@@ -220,7 +219,6 @@ impl VisitorMut<()> for Resolver {
         self.resolve(&mut val.condition)?;
         match self.resolve(&mut val.body) {
             Err(LoxError::BreakExc(_)) | Err(LoxError::ContinueExc(_)) | Ok(_)=> {
-                println!("hello");
                 Ok(())},
             Err(err) => Err(err)
         }
@@ -257,15 +255,16 @@ impl VisitorMut<()> for Resolver {
     fn visitClassStmt (&mut self, val: &mut Class) -> Result<(), LoxError> {
         let currClass = self.currClass;
         self.currClass = ClassType::CLASS;
-
         self.declare(&val.name);
         self.define(&val.name)?;
+        self.resolveLocal(&mut val.name);
         if let Some(spClass) = &mut val.superclass {
-            self.currClass = ClassType::SUBCLASS;
             if spClass.name.lexeme == val.name.lexeme {
                 return Err(LoxError::SemanticError("Class can't inherit itself".to_string(), val.name.lineNo))
             }
-            self.resolve(&mut Expr::Variable(Box::new(spClass.clone())));
+            self.currClass = ClassType::SUBCLASS;
+            // self.resolve(&mut Expr::Variable(Box::new(spClass.clone())))?;
+            self.visitVariableStmt(spClass)?;
             self.beginScope();
             self.scopes.last_mut().unwrap().insert("super".to_string(), true);
         }

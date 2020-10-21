@@ -5,7 +5,8 @@ mod grammar;
 mod parser;
 mod environment;
 mod resolver;
-
+mod system_calls;
+mod tests;
 use std::env::args;
 use runner::Runner;
 

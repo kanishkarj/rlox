@@ -133,7 +133,7 @@ pub enum TokenType {
     NUMBER,
        
     // Or regular expressions.
-    #[regex("\"(?s:[^\"\\\\]|\\\\.)*\"")]
+    #[regex("\"[^\"]*\"")]
     STRING,
 
     #[regex("//(?s:[^\"\\\\]|\\\\.)*")]
@@ -275,7 +275,7 @@ impl Lexer {
             literal = match tk {
                 TokenType::TRUE => Some(Literal::BOOL(true)),
                 TokenType::FALSE => Some(Literal::BOOL(false)),
-                TokenType::STRING => Some(Literal::STRING(lex.slice().to_string())),
+                TokenType::STRING => Some(Literal::STRING(lex.slice()[1..(lex.slice().len()-1)].to_string())),
                 TokenType::NUMBER => Some(Literal::NUM(lex.slice().parse::<f64>().unwrap())),
                 _ => None,
             };

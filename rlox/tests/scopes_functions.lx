@@ -1,0 +1,8 @@
+  fun taste(flavor) {
+    var adjective = "delicious";
+    print "The " + flavor + " cake is " + adjective + "!";
+  }
+
+{
+    taste("German chocolate");
+}

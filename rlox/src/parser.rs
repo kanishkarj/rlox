@@ -50,8 +50,9 @@ impl Parser {
     fn classDeclaration(&mut self) -> Result<Stmt, LoxError> {
         let name = self.consume(TokenType::IDENTIFIER, format!("Expect Class name"))?.clone();
         let mut superClass = None;
+
         if self.validate(TokenType::LESS) {
-            self.consume(TokenType::IDENTIFIER, format!("Expect SuperClass name"))?;
+        self.consume(TokenType::IDENTIFIER, format!("Expect SuperClass name"))?;
             superClass = Some(Variable::new(self.previous().clone()));
         }
         self.consume(TokenType::LEFT_BRACE, format!("Expect {{ before class body"))?;
@@ -65,7 +66,6 @@ impl Parser {
         }
         
         self.consume(TokenType::RIGHT_BRACE, "Expect '}' after class body".to_string())?;
-        
         return Ok(Stmt::Class(Box::new(Class::new(name.clone(),methods,superClass))))
     }
 

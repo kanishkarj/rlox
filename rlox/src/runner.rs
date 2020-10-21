@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::fs::read_to_string;
-use std::io::{stdin, Read};
+use std::io::{stdin, Read, stdout, Write, self};
 use std::sync::atomic::{AtomicBool, Ordering};
 use crate::scanner::{Lexer, TokenType};
 use crate::parser::Parser;
@@ -9,6 +9,7 @@ use crate::interpreter::Interpreter;
 use crate::resolver::Resolver;
 static had_error: AtomicBool = AtomicBool::new(false);
 use logos::{Logos,source::Source};
+use crate::system_calls::SystemInterface;
 
 pub struct Runner {
     lexer: Lexer,
@@ -19,7 +20,7 @@ impl Runner {
     pub fn new() -> Self {
         Runner {
             lexer: Lexer::new(),
-            interpreter: Interpreter::new(),
+            interpreter: Interpreter::new(Box::new(SystemInterface{})),
         }
     }
 
@@ -37,11 +38,13 @@ impl Runner {
     
     pub fn run_prompt(&mut self) {
         let mut buff = String::new();
-        let mut inp = stdin();
+        let inp = stdin();
     
         while true {
+            print!("> ");
+            io::stdout().flush();
             buff.clear();
-            inp.read_to_string(&mut buff).unwrap();
+            inp.read_line(&mut buff).unwrap();
             self.run(&buff);
             if had_error.compare_and_swap(true, true, Ordering::Release) {
                 std::process::exit(65)
@@ -60,7 +63,9 @@ impl Runner {
                             err.print_error("");
                             return;
                         }
-                        self.interpreter.interpret(&mut ast);
+                        if let Err(err) = self.interpreter.interpret(&mut ast) {
+                            err.print_error("");
+                        }
                     },
                     Err(err) => {println!("error: {:?}", err)},
                 }

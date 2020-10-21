@@ -91,7 +91,10 @@ impl<T> VisitorMutAcceptor<T> for Stmt::Stmt {
             Stmt::Stmt::Continue(v) => vis.visitContinueStmt(v),
             Stmt::Stmt::Function(v) => vis.visitFunctionStmt(v),
             Stmt::Stmt::Return(v) => vis.visitReturnStmt(v),
-            Stmt::Stmt::Class(v) => vis.visitClassStmt(v),
+            Stmt::Stmt::Class(v) => {
+                let x = vis.visitClassStmt(v);
+                x
+            },
         }
     }
 }
