@@ -5,7 +5,6 @@ use std::fmt::Debug;
 use crate::runner::Runner;
 
 use crate::grammar::{VisitorMut, LoxClass, LoxCallable, LoxFunction, LoxInstance, LoxLambda, FunctionType, ClassType, VisitorMutAcceptor};
-use crate::environment::Environment;
 
 use std::collections::HashMap;
 
@@ -218,18 +217,18 @@ impl VisitorMut<()> for Resolver {
     fn visitWhileStmt (&mut self, val: &mut While) -> Result<(), LoxError> {
         self.resolve(&mut val.condition)?;
         match self.resolve(&mut val.body) {
-            Err(LoxError::BreakExc(_)) | Err(LoxError::ContinueExc(_)) | Ok(_)=> {
+            Err(LoxError::Break(_)) | Err(LoxError::Continue(_)) | Ok(_)=> {
                 Ok(())},
             Err(err) => Err(err)
         }
     }
 
     fn visitBreakStmt (&mut self, val: &mut Break) -> Result<(), LoxError> {
-        Err(LoxError::BreakExc(val.keyword.lineNo))
+        Err(LoxError::Break(val.keyword.lineNo))
     }
 
     fn visitContinueStmt (&mut self, val: &mut Continue) -> Result<(), LoxError> {
-        Err(LoxError::ContinueExc(val.keyword.lineNo))
+        Err(LoxError::Continue(val.keyword.lineNo))
     }
 
     fn visitFunctionStmt (&mut self, val: &mut Function) -> Result<(), LoxError> {

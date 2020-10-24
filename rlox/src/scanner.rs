@@ -157,21 +157,19 @@ pub enum LoxError {
     ParserError(String, u32),
     RuntimeError(String, u32),
     SemanticError(String, u32),
-    ReturnVal(Object),
-    BreakExc(u32),
-    ContinueExc(u32),
+    ReturnVal(Object,u32),
+    Break(u32),
+    Continue(u32),
 }
 
-impl LoxError {
-    pub fn print_error(&self, msg: &str) {
+impl Display for LoxError {
+    fn fmt(&self, writer: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            LoxError::ScannerError(lex, line) => Runner::error(*line, lex, &format!("ScannerError: {:?}", msg).to_string()),
-            LoxError::ParserError(lex, line) => Runner::error(*line, lex, &format!("ParserError: {:?}", msg).to_string()),
-            LoxError::RuntimeError(lex, line) => Runner::error(*line, lex, &format!("RuntimeError: {:?}", msg).to_string()),
-            LoxError::SemanticError(lex, line) => Runner::error(*line, lex, &format!("SemanticError: {:?}", msg).to_string()),
-            LoxError::BreakExc(line) => Runner::error(*line, &"Break".to_string(), &format!("SemanticError: {:?}", msg).to_string()),
-            LoxError::ContinueExc(line) => Runner::error(*line, &"Continue".to_string(), &format!("SemanticError: {:?}", msg).to_string()),
-            _ => {}
+            LoxError::ScannerError(msg, line_no) => writer.write_fmt(format_args!("[ScannerError:L{}] {}", line_no, msg)),
+            LoxError::ParserError(msg, line_no) => writer.write_fmt(format_args!("[ParserError:L{}] {}", line_no, msg)),
+            LoxError::ScannerError(msg, line_no) => writer.write_fmt(format_args!("[ScannerError:L{}] {}", line_no, msg)),
+            LoxError::ScannerError(msg, line_no) => writer.write_fmt(format_args!("[ScannerError:L{}] {}", line_no, msg)),
+            _ => panic!("Handle Types cannot be displayed"),
         }
     }
 }

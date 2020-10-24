@@ -504,7 +504,6 @@ impl Parser {
     }
     
     fn error(token: Token, message: String) -> LoxError {
-        Runner::error(token.lineNo, &token.lexeme, &message);
         return LoxError::ParserError(token.lexeme.clone(), token.lineNo)
     }
 

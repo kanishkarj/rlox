@@ -5,7 +5,7 @@ use Expr::*;
 use Stmt::*;
 
 use super::scanner::*;
-use crate::environment::Environment;
+use crate::environment::{LocalEnvironment};
 use crate::interpreter::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -229,12 +229,12 @@ impl std::fmt::Debug for LoxCallable {
 #[derive(Debug, Clone)]
 pub struct LoxFunction {
     declaration: RefCell<Function>,
-    closure: Environment,
+    closure: LocalEnvironment,
     isInit: bool,
 }
 
 impl LoxFunction {
-    pub fn new(declaration: Function, closure: Environment, isInit: bool) -> Self {
+    pub fn new(declaration: Function, closure: LocalEnvironment, isInit: bool) -> Self {
         LoxFunction {
             declaration: RefCell::new(declaration),
             closure,
@@ -242,8 +242,8 @@ impl LoxFunction {
         }
     }
     pub fn bind(&self, inst: Rc<LoxInstance>) -> Self {
-        let mut env = Environment::build(self.closure.clone());
-        env.define("this".to_string(), Object::Instance(inst));
+        let mut env = LocalEnvironment::build(self.closure.clone());
+        env.defineAt("this".to_string(), Object::Instance(inst), 0);
         LoxFunction::new(self.declaration.borrow().clone(), env, self.isInit)
     }
 }
@@ -253,12 +253,12 @@ impl LoxCallable for LoxFunction {
         self.declaration.borrow().params.len()
     }
     fn call(&self, intrprt: &mut Interpreter, args: Vec<Object>) -> Result<Object, LoxError> {
-        let mut env = Environment::build(self.closure.clone());
+        let mut env = LocalEnvironment::build(self.closure.clone());
         for (param, arg) in self.declaration.borrow().params.iter().zip(args) {
-            env.define(param.lexeme.clone(), arg);
+            env.defineAt(param.lexeme.clone(), arg, 0);
         }
         let val = intrprt.executeBlock(&self.declaration.borrow().body, env);
-        if let Err(LoxError::ReturnVal(val)) = val {
+        if let Err(LoxError::ReturnVal(val,_)) = val {
             if self.isInit {
                 return Ok(self
                     .closure
@@ -277,11 +277,11 @@ impl LoxCallable for LoxFunction {
 #[derive(Debug, Clone)]
 pub struct LoxLambda {
     declaration: RefCell<Lambda>,
-    closure: Environment,
+    closure: LocalEnvironment,
 }
 
 impl LoxLambda {
-    pub fn new(declaration: Lambda, closure: Environment) -> Self {
+    pub fn new(declaration: Lambda, closure: LocalEnvironment) -> Self {
         LoxLambda {
             declaration: RefCell::new(declaration),
             closure,
@@ -294,12 +294,12 @@ impl LoxCallable for LoxLambda {
         self.declaration.borrow().params.len()
     }
     fn call(&self, intrprt: &mut Interpreter, args: Vec<Object>) -> Result<Object, LoxError> {
-        let mut env = Environment::build(self.closure.clone());
+        let mut env = LocalEnvironment::build(self.closure.clone());
         for (param, arg) in self.declaration.borrow().params.iter().zip(args) {
-            env.define(param.lexeme.clone(), arg);
+            env.defineAt(param.lexeme.clone(), arg, 0);
         }
         let val = intrprt.executeBlock(&self.declaration.borrow_mut().body, env);
-        if let Err(LoxError::ReturnVal(val)) = val {
+        if let Err(LoxError::ReturnVal(val,_)) = val {
             return Ok(val);
         }
         val

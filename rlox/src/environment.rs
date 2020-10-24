@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 struct EnvInner {
-    parent: Option<Environment>,
+    parent: Option<LocalEnvironment>,
     values: HashMap<String,Object>,
 }
 
@@ -42,7 +42,7 @@ impl EnvInner {
         }
     }
 
-    pub fn build(parent: Environment) -> Self {
+    pub fn build(parent: LocalEnvironment) -> Self {
         EnvInner {
             values: HashMap::new(),
             parent: Some(parent)
@@ -51,30 +51,60 @@ impl EnvInner {
 }
 
 #[derive(Debug,Clone)]
-pub struct Environment {
+pub struct GlobalEnvironment {
+    env: Rc<RefCell<EnvInner>>
+}
+#[derive(Debug,Clone)]
+pub struct LocalEnvironment {
     env: Rc<RefCell<EnvInner>>
 }
 
-impl Environment {
+impl LocalEnvironment {
     
     pub fn new() -> Self {
-        Environment {
+        LocalEnvironment {
             env: Rc::from(RefCell::new(EnvInner::new()))
         }
     }
-    pub fn build(parent: Environment) -> Self {
-        Environment {
+    pub fn build(parent: LocalEnvironment) -> Self {
+        LocalEnvironment {
             env: Rc::from(RefCell::new(EnvInner::build(parent)))
         }
     }
-    
-    pub fn ancestor(&self, hops: usize) -> Option<Environment> {
+    pub fn ancestor(&self, hops: usize) -> Option<Self> {
         return if hops == 0 {
             Some(self.clone())
         } else if let Some(env) = &mut self.env.borrow_mut().parent {
             return env.ancestor(hops - 1)
         } else {
             None
+        }
+    }
+    pub fn getAt(&self, name: String, hops: usize) -> Option<Object> {
+        if let Some(env) =  &mut self.ancestor(hops) {
+            return env.env.borrow_mut().get(name)  
+        }
+        None
+    }
+
+    pub fn assignAt(&self, name: String, val: Object, hops: usize) -> bool {
+        if let Some(env) =  &mut self.ancestor(hops) {
+            return env.env.borrow_mut().assign(name, val)
+        }
+        false
+    }
+
+    pub fn defineAt(&self, name: String, val: Object, hops: usize) {
+        if let Some(env) =  &mut self.ancestor(hops) {
+            env.env.borrow_mut().define(name, val)
+        }
+    }
+
+}
+impl GlobalEnvironment {
+    pub fn new() -> Self {
+        GlobalEnvironment {
+            env: Rc::from(RefCell::new(EnvInner::new()))
         }
     }
     
@@ -86,28 +116,15 @@ impl Environment {
         self.env.borrow_mut().get(name)   
     }
 
-    pub fn getAt(&self, name: String, hops: usize) -> Option<Object> {
-        if let Some(env) =  &mut self.ancestor(hops) {
-            return env.get(name)
-        }
-        None
-    }
-
-    pub fn assignAt(&self, name: String, val: Object, hops: usize) -> bool {
-        if let Some(env) =  &mut self.ancestor(hops) {
-            return env.assign(name, val)
-        }
-        false
-    }
-
     pub fn define(&self, name: String, val: Object) {
         self.env.borrow_mut().define(name, val)
     }
+}
 
-    pub fn defineAt(&self, name: String, val: Object, hops: usize) {
-        if let Some(env) =  &mut self.ancestor(hops) {
-            env.define(name, val)
+impl From<GlobalEnvironment> for LocalEnvironment {
+    fn from(val: GlobalEnvironment) -> Self { 
+        LocalEnvironment {
+            env: val.env
         }
     }
-
 }

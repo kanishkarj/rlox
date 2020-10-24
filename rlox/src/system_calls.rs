@@ -3,9 +3,11 @@ use crate::scanner::*;
 use std::time::SystemTime;
 use std::rc::Rc;
 use std::cell::RefCell;
+
 pub trait SystemCalls {
     fn print(&mut self, arg: &Object);
-    fn time(&mut self,) -> Result<Object, LoxError>;
+    fn time(&mut self) -> Result<Object, LoxError>;
+    fn print_error(&mut self, err: LoxError);
 }
 
 pub struct SystemInterface();
@@ -24,6 +26,9 @@ impl SystemCalls for SystemInterface {
         Ok(Object::Num(curr_time.as_millis() as f64))
     }
 
+    fn print_error(&mut self, err: LoxError) {
+        println!("[error] {}", err);
+    }
 }
 
 impl SystemCalls for SystemInterfaceMock {
@@ -36,4 +41,7 @@ impl SystemCalls for SystemInterfaceMock {
         Ok(Object::Num(0.0))
     }
 
+    fn print_error(&mut self, err: LoxError) {
+
+    }
 }

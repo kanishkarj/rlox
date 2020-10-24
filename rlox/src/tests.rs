@@ -2,7 +2,7 @@ use std::path::Path;
 use std::fs::read_to_string;
 use std::io::{stdin, Read, stdout, Write, self};
 use std::sync::atomic::{AtomicBool, Ordering};
-use crate::scanner::{Lexer, TokenType};
+use crate::scanner::*;
 use crate::parser::Parser;
 // use crate::ast_printer::ASTprinter;
 use crate::interpreter::{Interpreter, Object};
@@ -12,215 +12,76 @@ use logos::{Logos,source::Source};
 use crate::system_calls::SystemInterfaceMock;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::any::Any;
 
 
-fn run_script(path: &str, interpreter: &mut Interpreter) {
+fn run_script(path: &str, interpreter: &mut Interpreter) -> Result<(), LoxError>  {
     let path = Path::new(path);
     let script = read_to_string(path).unwrap();
-    let mut lexer = Lexer::new();
-    match lexer.parse(&script) {
-        Ok(tokens) => {
-            let mut parser = Parser::new(tokens);
-            match parser.parse() {
-                Ok(mut ast) => {
-                    let mut resolv = Resolver::new();
-                    if let Err(err) = resolv.resolve(&mut ast) {
-                        err.print_error("");
-                        return;
-                    }
-                    if let Err(err) = interpreter.interpret(&mut ast) {
-                        err.print_error("");
-                    }
-                },
-                Err(err) => {println!("error: {:?}", err)},
-            }
-        },
-        Err(err) => {println!("error: {:?}", err)},
-    }
-}
-
-#[test]
-fn class() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/class.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Str("The German chocolate cake is delicious!".to_string())));
-    assert_eq!(print_cache.pop(), None);
-}
-
-#[test]
-fn closures_scopes() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/closures-scopes.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Str("global".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("block".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("global".to_string())));
-    assert_eq!(print_cache.pop(), None);
+    let mut ast = Parser::new(Lexer::new().parse(&script)?).parse()?;
+        Resolver::new().resolve(&mut ast)?;
+        interpreter.interpret(&mut ast)?;
+        Ok(())
 }
 
 
-#[test]
-fn closures1() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/closures1.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Num(2 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(1 as f64)));
-    assert_eq!(print_cache.pop(), None);
+macro_rules! test_line {
+    ($res_vec:ident, $expected_val:expr, $($expected_vals:expr),+) => {
+        test_line!($res_vec, $expected_val);
+        test_line!($res_vec, $($expected_vals),+)
+    };
+    ($res_vec:ident, $expected_val:expr) => {
+        if let Some(f) = (&$expected_val as &Any).downcast_ref::<&str>() {
+            assert_eq!($res_vec.pop(), Some(Object::Str(f.to_string())));
+        } else if let Some(f) = (&$expected_val as &Any).downcast_ref::<f64>() {
+            assert_eq!($res_vec.pop(), Some(Object::Num(*f)));
+        } else if let Some(f) = (&$expected_val as &Any).downcast_ref::<i32>() {
+            assert_eq!($res_vec.pop(), Some(Object::Num(*f as f64)));
+        } else {
+            // NOTE: this can happen if the type of param is not correctly passed
+            panic!();
+        }
+        // assert_eq!($res_vec.pop(), Some($expected_val));
+    };
 }
 
-#[test]
-fn closures2() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/closures2.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Num(5 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(4 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(3 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(2 as f64)));
-    assert_eq!(print_cache.pop(), None);
-}
-
-
-#[test]
-fn for_test() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/for.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Num(4 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(3 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(2 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(1 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(0 as f64)));
-    assert_eq!(print_cache.pop(), None);
+macro_rules! create_test {
+    ($test_name:ident, $file_path: literal, $($expected_vals:expr),+) => {
+        #[test]
+        fn $test_name() {
+            let print_cache = Rc::new(RefCell::new(vec![]));
+            let mut interpreter = Interpreter::new(Rc::new(RefCell::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)})));
+            run_script($file_path, &mut interpreter);
+            let mut print_cache = print_cache.borrow_mut();
+            test_line!(print_cache, $($expected_vals),+);
+            assert_eq!(print_cache.pop(), None);
+        }
+    };
 }
 
 
-#[test]
-fn if_else() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/if-else.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Str("l3".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("l2".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("l1".to_string())));
-    assert_eq!(print_cache.pop(), None);
-}
+// SampleTest generated
+// #[test]
+// fn class() {
+//     let print_cache = Rc::new(RefCell::new(vec![]));
+//     let mut interpreter = Interpreter::new(Rc::new(RefCell::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)})));
+//     run_script("./tests/class.lx", &mut interpreter);
+//     let mut print_cache = print_cache.borrow_mut();
+//     assert_eq!(print_cache.pop(), Some(Object::Str("The German chocolate cake is delicious!".to_string())));
+//     assert_eq!(print_cache.pop(), None);
+// }
 
-
-#[test]
-fn lambdas() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/lambdas.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Num(24 as f64)));
-    assert_eq!(print_cache.pop(), None);
-}
-
-
-#[test]
-fn recursion1() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/recursion1.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Num(479001600 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(362880 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(720 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(6 as f64)));
-    assert_eq!(print_cache.pop(), None);
-}
-
-#[test]
-fn recursion2() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/recursion2.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Num(1597 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(610 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(233 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(55 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(13 as f64)));
-    assert_eq!(print_cache.pop(), None);
-}
-
-#[test]
-fn while_test() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/while.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Num(89 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(55 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(34 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(21 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(13 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(8 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(5 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(3 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(2 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(1 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(1 as f64)));
-    assert_eq!(print_cache.pop(), Some(Object::Num(0 as f64)));
-    assert_eq!(print_cache.pop(), None);
-}
-
-#[test]
-fn inheritance() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/inheritance.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Str("Pipe full of custard and coat with chocolate.".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("Fry until golden brown.".to_string())));
-    assert_eq!(print_cache.pop(), None);
-}
-
-#[test]
-fn scopes_variables() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/scopes_variables.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Str("global c".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("global b".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("global a".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("global c".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("outer b".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("outer a".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("global c".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("outer b".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("inner a".to_string())));
-    assert_eq!(print_cache.pop(), None);
-}
-
-
-#[test]
-fn scopes_inheritance() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/scopes_inheritance.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Str("Pipe full of custard and coat with chocolate.".to_string())));
-    assert_eq!(print_cache.pop(), Some(Object::Str("Fry until golden brown.".to_string())));
-    assert_eq!(print_cache.pop(), None);
-}
-
-#[test]
-fn scopes_functions() {
-    let print_cache = Rc::new(RefCell::new(vec![]));
-    let mut interpreter = Interpreter::new(Box::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}));
-    run_script("./tests/scopes_functions.lx", &mut interpreter);
-    let mut print_cache = print_cache.borrow_mut();
-    assert_eq!(print_cache.pop(), Some(Object::Str("The German chocolate cake is delicious!".to_string())));
-    assert_eq!(print_cache.pop(), None);
-}
+create_test!(class, "./tests/class.lx", "The German chocolate cake is delicious!");
+create_test!(closures_scopes, "./tests/closures-scopes.lx", "global","block","global");
+create_test!(closures1,"./tests/closures1.lx",2,1);
+create_test!(closures2,"./tests/closures2.lx",5,4,3,2);
+create_test!(for_test,"./tests/for.lx",4,3,2,1,0);
+create_test!(if_else,"./tests/if-else.lx","l3","l2","l1");
+create_test!(lambdas,"./tests/lambdas.lx",24);
+create_test!(recursion1,"./tests/recursion1.lx",479001600,362880,720,6);
+create_test!(recursion2,"./tests/recursion2.lx",1597,610,233,55,13);
+create_test!(while_test,"./tests/while.lx",89,55,34,21,13,8,5,3,2,1,1,0);
+create_test!(inheritance,"./tests/inheritance.lx","Pipe full of custard and coat with chocolate.","Fry until golden brown.");
+create_test!(scopes_variables,"./tests/scopes_variables.lx","global c","global b","global a","global c","outer b","outer a","global c","outer b","inner a");
+create_test!(scopes_inheritance,"./tests/scopes_inheritance.lx","Pipe full of custard and coat with chocolate.","Fry until golden brown.");
+create_test!(scopes_functions,"./tests/scopes_functions.lx","The German chocolate cake is delicious!");

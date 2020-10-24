@@ -3,13 +3,13 @@ use crate::scanner::*;
 use std::fmt::Debug;
 
 use crate::grammar::{Visitor, LoxCallable, LoxFunction, LoxLambda, LoxClass, LoxInstance, VisAcceptor};
-use crate::environment::Environment;
+use crate::environment::{LocalEnvironment, GlobalEnvironment};
 use std::rc::Rc;
 use std::fmt::Display;
 use std::collections::HashMap;
 use crate::system_calls::SystemCalls;
+use std::cell::RefCell;
 // obj.get not handled
-// env.getat is to be only used with env, and .get with globals, ensure this for the others too! can eb done using traits.
 #[derive(Debug,Clone)]
 pub enum Object {
     Str(String),
@@ -50,9 +50,9 @@ impl Display for Object {
 }
 
 pub struct Interpreter {
-    pub env: Environment,
-    pub global: Environment,
-    system_interface: Box<dyn SystemCalls>
+    pub env: LocalEnvironment,
+    pub global: GlobalEnvironment,
+    system_interface: Rc<RefCell<dyn SystemCalls>>
 }
 
 #[derive(Clone)]
@@ -60,7 +60,7 @@ struct ClockFunc;
 
 impl LoxCallable for ClockFunc {
     fn call(&self, intr: &mut Interpreter, args: Vec<Object>) -> Result<Object, LoxError> { 
-        intr.system_interface.time()
+        intr.system_interface.borrow_mut().time()
     }
     fn arity(&self) -> usize { 0 }
 }
@@ -251,7 +251,7 @@ impl Visitor<Object> for Interpreter {
 
     fn visitPrintStmt(&mut self, val: &Print) -> std::result::Result<Object, LoxError> {
         let res = self.evaluate(&val.expr)?;
-        self.system_interface.print(&res);
+        self.system_interface.borrow_mut().print(&res);
         return Ok(res)
     }
     
@@ -290,7 +290,7 @@ impl Visitor<Object> for Interpreter {
      }
 
     fn visitBlockStmt(&mut self, val: &Block) -> Result<Object, LoxError> {
-        let env = Environment::build(self.env.clone());
+        let env = LocalEnvironment::build(self.env.clone());
         return self.executeBlock(&val.statements, env);
     }
 
@@ -330,8 +330,8 @@ impl Visitor<Object> for Interpreter {
         let mut res = self.evaluate(&val.condition)?;
         while self.isTrue(&res) {
             match self.evaluate(&val.body) {
-                Err(LoxError::BreakExc(_)) => break,
-                Err(LoxError::ContinueExc(_)) => continue,
+                Err(LoxError::Break(_)) => break,
+                Err(LoxError::Continue(_)) => continue,
                 _ => {}
             }
             res = self.evaluate(&val.condition)?;
@@ -340,10 +340,10 @@ impl Visitor<Object> for Interpreter {
     }
 
     fn visitBreakStmt(&mut self, val: &Break) -> Result<Object, LoxError> {
-        Err(LoxError::BreakExc(val.keyword.lineNo))
+        Err(LoxError::Break(val.keyword.lineNo))
     }
     fn visitContinueStmt(&mut self, val: &Continue) -> Result<Object, LoxError> {
-        Err(LoxError::ContinueExc(val.keyword.lineNo))
+        Err(LoxError::Continue(val.keyword.lineNo))
     }
     
     fn visitCallExpr(&mut self, val: &Call) -> Result<Object, LoxError> {
@@ -376,7 +376,7 @@ impl Visitor<Object> for Interpreter {
 
     fn visitFunctionStmt(&mut self, val: &Function) -> Result<Object, LoxError> {
         let func = LoxFunction::new(val.clone(), self.env.clone(), false);
-        self.env.define(val.name.lexeme.clone(), Object::Function(Rc::new(func)));
+        self.env.defineAt(val.name.lexeme.clone(), Object::Function(Rc::new(func)),0);
         return Ok(Object::Nil)
     }
 
@@ -385,7 +385,7 @@ impl Visitor<Object> for Interpreter {
         if let Some(value) = &val.value {
             retValue = self.evaluate(value)?;
         }
-        return Err(LoxError::ReturnVal(retValue))
+        return Err(LoxError::ReturnVal(retValue, val.keyword.lineNo))
     }
 
     fn visitClassStmt(&mut self, val: &Class) -> Result<Object, LoxError> {
@@ -393,12 +393,8 @@ impl Visitor<Object> for Interpreter {
         if let Some(spClass) = &val.superclass {
             if let Object::Class(value) = &self.visitVariableStmt(spClass)?{
                 superClass = Some(Rc::clone(value));
-                self.env = Environment::build(self.env.clone());
-                if let Some(hops) = val.name.scope {
-                    self.env.defineAt("super".to_string(), Object::Class(Rc::clone(value)), hops);
-                } else {
-                    self.env.define("super".to_string(), Object::Class(Rc::clone(value)));
-                }
+                self.env = LocalEnvironment::build(self.env.clone());
+                self.env.defineAt("super".to_string(), Object::Class(Rc::clone(value)), 0);
             } 
             else {
                 return Err(LoxError::RuntimeError("SuperClass must be a class".to_string(), val.name.lineNo));
@@ -448,17 +444,17 @@ impl Visitor<Object> for Interpreter {
 
 impl Interpreter
 {
-    pub fn new(syscall: Box<dyn SystemCalls>) -> Self {
-        let mut env = Environment::new();
+    pub fn new(syscall: Rc<RefCell<dyn SystemCalls>>) -> Self {
+        let mut env = GlobalEnvironment::new();
         env.define("time".to_string(), Object::Function(Rc::new(ClockFunc{})));
         Interpreter {
-            env:            env.clone(),
+            env: LocalEnvironment::from(env.clone()),
             global: env,
-            system_interface: syscall  
+            system_interface: syscall 
         }
     }
 
-    pub fn executeBlock(&mut self, stmts: &Vec<Stmt>, env: Environment) -> Result<Object, LoxError>
+    pub fn executeBlock(&mut self, stmts: &Vec<Stmt>, env: LocalEnvironment) -> Result<Object, LoxError>
         where Self: Visitor<Object>
     {
         let prev = std::mem::replace(&mut self.env, env);

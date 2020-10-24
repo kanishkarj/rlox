@@ -1,85 +1,60 @@
-use std::path::Path;
-use std::fs::read_to_string;
-use std::io::{stdin, Read, stdout, Write, self};
-use std::sync::atomic::{AtomicBool, Ordering};
-use crate::scanner::{Lexer, TokenType};
 use crate::parser::Parser;
-// use crate::ast_printer::ASTprinter;
+use crate::scanner::*;
+use std::fs::read_to_string;
+use std::io::{self, stdin, stdout, Read, Write};
+use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use crate::interpreter::Interpreter;
 use crate::resolver::Resolver;
 static had_error: AtomicBool = AtomicBool::new(false);
-use logos::{Logos,source::Source};
-use crate::system_calls::SystemInterface;
+use crate::system_calls::{SystemCalls, SystemInterface};
+use logos::{source::Source, Logos};
+use std::rc::Rc;
+use std::cell::RefCell;
 
+/**
+ * TODO: 
+ * extend and compose errors such that return and break come in another enum.
+ * env.getat is to be only used with env, and .get with globals, ensure this for the others too! can eb done using traits.
+ * refactor/rename to follow rust naming
+ * macros in tests
+ * add tests that check for error cases too
+ * */
 pub struct Runner {
-    lexer: Lexer,
-    interpreter: Interpreter
+    sys_interface: Rc<RefCell<dyn SystemCalls>>,
 }
 
 impl Runner {
     pub fn new() -> Self {
         Runner {
-            lexer: Lexer::new(),
-            interpreter: Interpreter::new(Box::new(SystemInterface{})),
+            sys_interface: Rc::new(RefCell::new(SystemInterface {})),
         }
     }
 
     pub fn run_file(&mut self, path: &String) {
         let path = Path::new(path);
         let script = read_to_string(path).unwrap();
-        // let mut lex = TokenType::lexer(&script);
-        // while let Some(tk) = lex.next() {
-        //     println!("{:?}: {}", tk, lex.slice());
-        // }
-        // for it in lex {
-        // }
-        self.run(&script);
+        if let Err(err) = self.run(&script) {
+            self.sys_interface.borrow_mut().print_error(err);
+        }
     }
-    
     pub fn run_prompt(&mut self) {
         let mut buff = String::new();
         let inp = stdin();
-    
-        while true {
+        loop {
             print!("> ");
             io::stdout().flush();
             buff.clear();
             inp.read_line(&mut buff).unwrap();
-            self.run(&buff);
-            if had_error.compare_and_swap(true, true, Ordering::Release) {
-                std::process::exit(65)
+            if let Err(err) = self.run(&buff) {
+                self.sys_interface.borrow_mut().print_error(err);
             }
         }
     }
-    
-    fn run(&mut self, script: &String) {
-        match self.lexer.parse(script) {
-            Ok(tokens) => {
-                let mut parser = Parser::new(tokens);
-                match parser.parse() {
-                    Ok(mut ast) => {
-                        let mut resolv = Resolver::new();
-                        if let Err(err) = resolv.resolve(&mut ast) {
-                            err.print_error("");
-                            return;
-                        }
-                        if let Err(err) = self.interpreter.interpret(&mut ast) {
-                            err.print_error("");
-                        }
-                    },
-                    Err(err) => {println!("error: {:?}", err)},
-                }
-            },
-            Err(err) => {println!("error: {:?}", err)},
-        }
-    }
-    
-    pub fn error(line: u32, location: &String, message: &String) {
-        Self::report(line, location, message)
-    }
-    
-    fn report(line: u32, location: &String, message: &String) {
-        println!("[line {}] Error {}: {}", line, location, message);
-        had_error.store(true, Ordering::Release);
+    fn run(&mut self, script: &String) -> Result<(), LoxError> {
+        let mut ast = Parser::new(Lexer::new().parse(script)?).parse()?;
+        Resolver::new().resolve(&mut ast)?;
+        Interpreter::new(Rc::clone(&mut self.sys_interface)).interpret(&mut ast)?;
+        Ok(())
     }
 }
