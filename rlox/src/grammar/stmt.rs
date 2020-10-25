@@ -1,6 +1,7 @@
 use crate::grammar::expr::*;
-use crate::grammar::LoxCallable;
 use crate::scanner::*;
+use crate::token::Token;
+
 #[derive(Debug, Clone)]
 pub enum Stmt {
     Expression(Box<Expression>),
@@ -128,16 +129,16 @@ impl Continue {
 #[derive(Debug, Clone)]
 pub struct If {
     pub condition: Expr,
-    pub thenBranch: Stmt,
-    pub elseBranch: Option<Stmt>,
+    pub then_branch: Stmt,
+    pub else_branch: Option<Stmt>,
 }
 
 impl If {
-    pub fn new(condition: Expr, thenBranch: Stmt, elseBranch: Option<Stmt>) -> Self {
+    pub fn new(condition: Expr, then_branch: Stmt, else_branch: Option<Stmt>) -> Self {
         Self {
             condition,
-            thenBranch,
-            elseBranch,
+            then_branch,
+            else_branch,
         }
     }
 }

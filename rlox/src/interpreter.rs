@@ -3,14 +3,21 @@ use crate::scanner::*;
 use std::fmt::Debug;
 
 use crate::environment::{GlobalEnvironment, LocalEnvironment};
-use crate::grammar::{
-    LoxCallable, LoxClass, LoxFunction, LoxInstance, LoxLambda, VisAcceptor, Visitor,
-};
+
 use crate::system_calls::SystemCalls;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::rc::Rc;
+use crate::grammar::lox_callable::LoxCallable;
+use crate::grammar::visitor::{VisAcceptor, Visitor};
+use crate::grammar::lox_class::{LoxClass, LoxInstance};
+use crate::grammar::lox_function::{LoxLambda, LoxFunction};
+use crate::token_type::TokenType;
+use crate::error::LoxError;
+use crate::literal::Literal;
+use crate::token::Token;
+
 // obj.get not handled
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -21,6 +28,17 @@ pub enum Object {
     Function(Rc<dyn LoxCallable>),
     Class(Rc<LoxClass>),
     Instance(Rc<LoxInstance>),
+}
+
+impl From<Literal> for Object {
+    fn from(val: Literal) -> Self {
+        match val {
+            Literal::NUM(v) => Object::Num(v),
+            Literal::STRING(v) => Object::Str(v),
+            Literal::BOOL(v) => Object::Bool(v),
+            Literal::NIL => Object::Nil,
+        }
+    }
 }
 
 impl PartialEq for Object {
@@ -296,7 +314,7 @@ impl Visitor<Object> for Interpreter {
     }
 
     fn visit_literal_expr(&mut self, val: &Literal) -> Result<Object, LoxError> {
-        Ok(val.clone().to_object())
+        Ok(val.clone().into())
     }
 
     fn visit_logical_expr(&mut self, val: &Logical) -> Result<Object, LoxError> {
@@ -432,8 +450,8 @@ impl Visitor<Object> for Interpreter {
     fn visit_if_stmt(&mut self, val: &If) -> Result<Object, LoxError> {
         if let Object::Bool(truthy) = self.evaluate(&val.condition)? {
             if truthy {
-                self.evaluate(&val.thenBranch)?;
-            } else if let Some(stmt) = &val.elseBranch {
+                self.evaluate(&val.then_branch)?;
+            } else if let Some(stmt) = &val.else_branch {
                 self.evaluate(stmt)?;
             }
         }

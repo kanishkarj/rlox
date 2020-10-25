@@ -10,6 +10,7 @@ use crate::system_calls::{SystemCalls, SystemInterface};
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use crate::error::LoxError;
 
 /**
  * TODO:

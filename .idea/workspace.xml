@@ -14,22 +14,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bb778ed8-2093-4b3c-be77-333146542cd5" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/expr.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/stmt.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/class_type.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/function_type.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/lox_callable.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/lox_class.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/lox_function.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/visitor.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/scripts/run.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/environment.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/environment.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/Expr.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/Stmt.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/grammar/expr.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rlox/src/grammar/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/grammar/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/grammar/stmt.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rlox/src/interpreter.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/interpreter.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/parser.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/parser.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rlox/src/resolver.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/resolver.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/runner.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/runner.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/scanner.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/scanner.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/system_calls.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/system_calls.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/tests.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/tests.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -99,10 +95,10 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="586" y="198" key="#Inspections/-1366.304.1366.728/0.0.1920.1040@0.0.1920.1040" timestamp="1602590302426" />
-    <state x="2004" y="387" key="#Rust" timestamp="1603607403826">
+    <state x="2004" y="387" width="643" height="340" key="#Rust" timestamp="1603638463019">
       <screen x="1366" y="0" width="1920" height="1080" />
     </state>
-    <state x="2004" y="387" key="#Rust/1366.0.1920.1080/0.156.1366.768@1366.0.1920.1080" timestamp="1603607403826" />
+    <state x="2004" y="387" width="643" height="340" key="#Rust/1366.0.1920.1080/0.156.1366.768@1366.0.1920.1080" timestamp="1603638463019" />
     <state x="2110" y="314" key="FileChooserDialogImpl" timestamp="1603607397319">
       <screen x="1366" y="0" width="1920" height="1080" />
     </state>

@@ -12,6 +12,7 @@ use logos::{source::Source, Logos};
 use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
+use crate::error::LoxError;
 
 fn run_script(path: &str, interpreter: &mut Interpreter) -> Result<(), LoxError> {
     let path = Path::new(path);

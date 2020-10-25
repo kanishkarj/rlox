@@ -2,6 +2,10 @@ use crate::grammar::expr::*;
 use crate::grammar::stmt::*;
 use crate::runner::Runner;
 use crate::scanner::*;
+use crate::token_type::TokenType;
+use crate::error::LoxError;
+use crate::literal::Literal;
+use crate::token::Token;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -568,7 +572,7 @@ impl Parser {
     }
 
     fn synchronize(&mut self) {
-        use TokenType::*;
+        use crate::token_type::TokenType::*;
 
         self.advance();
         while !self.is_at_end() {

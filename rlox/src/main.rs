@@ -6,7 +6,13 @@ mod resolver;
 mod runner;
 mod scanner;
 mod system_calls;
+mod literal;
+mod token;
+mod token_type;
+mod error;
 mod tests;
+
+
 use runner::Runner;
 use std::env::args;
 

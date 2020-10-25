@@ -1,6 +1,8 @@
-use crate::grammar::LoxCallable;
+use crate::grammar::lox_callable::LoxCallable;
 use crate::grammar::stmt::*;
 use crate::scanner::*;
+use crate::literal::Literal;
+use crate::token::Token;
 
 #[derive(Debug, Clone)]
 pub enum Expr {

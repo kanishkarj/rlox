@@ -1,15 +1,14 @@
 use crate::grammar::{expr::*, stmt::*};
-
-
 use crate::scanner::*;
 
-
-use crate::grammar::{
-    ClassType, FunctionType,
-    VisitorMut, VisitorMutAcceptor,
-};
+use crate::grammar::visitor::{VisitorMut, VisitorMutAcceptor};
 
 use std::collections::HashMap;
+use crate::grammar::function_type::FunctionType;
+use crate::grammar::class_type::ClassType;
+use crate::error::LoxError;
+use crate::literal::Literal;
+use crate::token::Token;
 
 // handle break/continue at resolve
 // static fields maybe
@@ -224,8 +223,8 @@ impl VisitorMut<()> for Resolver {
 
     fn visit_if_stmt(&mut self, val: &mut If) -> Result<(), LoxError> {
         self.resolve(&mut val.condition)?;
-        self.resolve(&mut val.thenBranch)?;
-        if let Some(else_br) = &mut val.elseBranch {
+        self.resolve(&mut val.then_branch)?;
+        if let Some(else_br) = &mut val.else_branch {
             self.resolve(else_br)?;
         }
         Ok(())
