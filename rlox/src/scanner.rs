@@ -1,137 +1,132 @@
+
 use std::error::Error;
-use crate::runner::Runner;
 use std::fmt::Display;
-
-pub const empty_str: String = String::new();
-
 
 use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq, Clone)]
 pub enum TokenType {
     #[token("(")]
-    LEFT_PAREN,
-    
+    LeftParen,
+
     #[token(")")]
-    RIGHT_PAREN,
-    
+    RightParen,
+
     #[token("{")]
-    LEFT_BRACE,
-    
+    LeftBrace,
+
     #[token("}")]
-    RIGHT_BRACE,
-    
+    RightBrace,
+
     #[token(",")]
     COMMA,
-    
+
     #[token(".")]
     DOT,
-    
+
     #[token("-")]
     MINUS,
-    
+
     #[token("+")]
     PLUS,
-    
+
     #[token(";")]
     SEMICOLON,
-    
+
     #[token("/")]
     SLASH,
-    
+
     #[token("*")]
     STAR,
-    
+
     // One or two character tokens.
-    
     #[token("!")]
     BANG,
-    
+
     #[token("!=")]
-    BANG_EQUAL,
-    
+    BangEqual,
+
     #[token("=")]
     EQUAL,
-    
+
     #[token("==")]
-    EQUAL_EQUAL,
-    
+    EqualEqual,
+
     #[token(">")]
     GREATER,
-    
+
     #[token(">=")]
-    GREATER_EQUAL,
-    
+    GreaterEqual,
+
     #[token("<")]
     LESS,
-    
+
     #[token("<=")]
-    LESS_EQUAL,
-    
+    LessEqual,
+
     // Keywords.
-    
     #[token("and")]
     AND,
-    
+
     #[token("class")]
     CLASS,
-    
+
     #[token("else")]
     ELSE,
-    
+
     #[token("false")]
     FALSE,
-    
+
     #[token("fun")]
     FUN,
-    
+
     #[token("for")]
     FOR,
-    
+
     #[token("if")]
     IF,
-    
+
     #[token("nil")]
     NIL,
-    
+
     #[token("or")]
     OR,
-    
+
     #[token("print")]
     PRINT,
-    
+
     #[token("return")]
     RETURN,
-    
+
     #[token("super")]
     SUPER,
-    
+
     #[token("this")]
     THIS,
-    
+
     #[token("true")]
     TRUE,
-    
+
     #[token("var")]
     VAR,
-    
+
     #[token("while")]
     WHILE,
-    
+
     #[token("break")]
     BREAK,
-    
+
     #[token("continue")]
     CONTINUE,
-   
+
     // Or regular expressions.
     #[regex("[a-zA-Z]+[a-zA-Z0-9_]*")]
     IDENTIFIER,
-       
+
     // Or regular expressions.
     #[regex("[0-9]+")]
     NUMBER,
-       
+
     // Or regular expressions.
     #[regex("\"[^\"]*\"")]
     STRING,
@@ -147,36 +142,47 @@ pub enum TokenType {
     #[regex(r"[ \t\n\f]+", logos::skip)]
     Error,
 
-    EOF
+    EOF,
 }
 
 // make return, break into another enum and extend
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum LoxError {
     ScannerError(String, u32),
     ParserError(String, u32),
     RuntimeError(String, u32),
     SemanticError(String, u32),
-    ReturnVal(Object,u32),
+    ReturnVal(Object, u32),
     Break(u32),
     Continue(u32),
 }
 
 impl Display for LoxError {
-    fn fmt(&self, writer: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+    fn fmt(
+        &self,
+        writer: &mut std::fmt::Formatter<'_>,
+    ) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            LoxError::ScannerError(msg, line_no) => writer.write_fmt(format_args!("[ScannerError:L{}] {}", line_no, msg)),
-            LoxError::ParserError(msg, line_no) => writer.write_fmt(format_args!("[ParserError:L{}] {}", line_no, msg)),
-            LoxError::ScannerError(msg, line_no) => writer.write_fmt(format_args!("[ScannerError:L{}] {}", line_no, msg)),
-            LoxError::ScannerError(msg, line_no) => writer.write_fmt(format_args!("[ScannerError:L{}] {}", line_no, msg)),
+            LoxError::ScannerError(msg, line_no) => {
+                writer.write_fmt(format_args!("[ScannerError:L{}] {}", line_no, msg))
+            }
+            LoxError::ParserError(msg, line_no) => {
+                writer.write_fmt(format_args!("[ParserError:L{}] {}", line_no, msg))
+            }
+            LoxError::RuntimeError(msg, line_no) => {
+                writer.write_fmt(format_args!("[RuntimeError:L{}] {}", line_no, msg))
+            }
+            LoxError::SemanticError(msg, line_no) => {
+                writer.write_fmt(format_args!("[SemanticError:L{}] {}", line_no, msg))
+            }
             _ => panic!("Handle Types cannot be displayed"),
         }
     }
 }
 
 impl std::convert::From<std::time::SystemTimeError> for LoxError {
-    fn from(err: std::time::SystemTimeError) -> Self { 
-        LoxError::RuntimeError(err.description().to_string(), 0)
+    fn from(err: std::time::SystemTimeError) -> Self {
+        LoxError::RuntimeError(err.to_string().to_string(), 0)
     }
 }
 
@@ -185,7 +191,7 @@ pub enum Literal {
     NUM(f64),
     STRING(String),
     BOOL(bool),
-    NIL
+    NIL,
 }
 
 use crate::interpreter::Object;
@@ -201,8 +207,11 @@ impl Literal {
     }
 }
 
-impl Display for Literal {   
-    fn fmt(&self, writer: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+impl Display for Literal {
+    fn fmt(
+        &self,
+        writer: &mut std::fmt::Formatter<'_>,
+    ) -> std::result::Result<(), std::fmt::Error> {
         match self {
             Literal::NUM(val) => writer.write_str(&val.to_string()),
             Literal::STRING(val) => writer.write_str(&val.to_string()),
@@ -214,25 +223,27 @@ impl Display for Literal {
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    pub tokenType: TokenType,
-    pub lineNo: u32,
+    pub token_type: TokenType,
+    pub line_no: u32,
     pub literal: Option<Literal>,
     pub lexeme: String,
-    pub scope: Option<usize>
+    pub scope: Option<usize>,
 }
 
 impl Token {
-    pub fn new( tokenType: TokenType,
-        lineNo: u32,
+    pub fn new(
+        token_type: TokenType,
+        line_no: u32,
         literal: Option<Literal>,
-        lexeme: String) -> Self {
-            Token {
-                tokenType,
-                lineNo,
-                literal,
-                lexeme,
-                scope: None
-            }
+        lexeme: String,
+    ) -> Self {
+        Token {
+            token_type,
+            line_no,
+            literal,
+            lexeme,
+            scope: None,
+        }
     }
 }
 
@@ -244,11 +255,9 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new() -> Self {
-        Lexer {
-            curr: 1,
-        }
+        Lexer { curr: 1 }
     }
-    
+
     pub fn parse(&mut self, script: &String) -> Result<Vec<Token>, LoxError> {
         let lines = script.split('\n');
         let mut tokens = vec![];
@@ -256,7 +265,7 @@ impl Lexer {
             tokens.append(&mut self.read_line(&line.to_string())?);
             self.curr += 1;
         }
-        tokens.push(Token::new(TokenType::EOF,self.curr,None,empty_str));
+        tokens.push(Token::new(TokenType::EOF, self.curr, None, String::new()));
         Ok(tokens)
     }
 
@@ -273,14 +282,13 @@ impl Lexer {
             literal = match tk {
                 TokenType::TRUE => Some(Literal::BOOL(true)),
                 TokenType::FALSE => Some(Literal::BOOL(false)),
-                TokenType::STRING => Some(Literal::STRING(lex.slice()[1..(lex.slice().len()-1)].to_string())),
+                TokenType::STRING => Some(Literal::STRING(
+                    lex.slice()[1..(lex.slice().len() - 1)].to_string(),
+                )),
                 TokenType::NUMBER => Some(Literal::NUM(lex.slice().parse::<f64>().unwrap())),
                 _ => None,
             };
-            tokens.push(Token::new(tk,
-                 self.curr,
-                 literal,
-                 lex.slice().to_string()))
+            tokens.push(Token::new(tk, self.curr, literal, lex.slice().to_string()))
         }
         return Ok(tokens);
     }

@@ -1,14 +1,14 @@
+mod environment;
+mod grammar;
+mod interpreter;
+mod parser;
+mod resolver;
 mod runner;
 mod scanner;
-mod interpreter;
-mod grammar;
-mod parser;
-mod environment;
-mod resolver;
 mod system_calls;
 mod tests;
-use std::env::args;
 use runner::Runner;
+use std::env::args;
 
 fn main() {
     let cli_args: Vec<String> = args().collect();

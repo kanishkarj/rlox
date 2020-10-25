@@ -1,19 +1,18 @@
+use crate::interpreter::Interpreter;
 use crate::parser::Parser;
+use crate::resolver::Resolver;
 use crate::scanner::*;
 use std::fs::read_to_string;
-use std::io::{self, stdin, stdout, Read, Write};
+use std::io::{self, stdin, Write};
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
-use crate::interpreter::Interpreter;
-use crate::resolver::Resolver;
-static had_error: AtomicBool = AtomicBool::new(false);
+
 use crate::system_calls::{SystemCalls, SystemInterface};
-use logos::{source::Source, Logos};
-use std::rc::Rc;
+
 use std::cell::RefCell;
+use std::rc::Rc;
 
 /**
- * TODO: 
+ * TODO:
  * extend and compose errors such that return and break come in another enum.
  * env.getat is to be only used with env, and .get with globals, ensure this for the others too! can eb done using traits.
  * refactor/rename to follow rust naming
@@ -43,7 +42,7 @@ impl Runner {
         let inp = stdin();
         loop {
             print!("> ");
-            io::stdout().flush();
+            io::stdout().flush().unwrap();
             buff.clear();
             inp.read_line(&mut buff).unwrap();
             if let Err(err) = self.run(&buff) {
