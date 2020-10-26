@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="BranchesTreeState">
     <expand>
       <path>
@@ -10,22 +13,63 @@
     <select />
   </component>
   <component name="CargoProjects">
-    <cargoProject FILE="$PROJECT_DIR$/rlox/Cargo.toml" />
+    <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
+    <cargoProject FILE="$PROJECT_DIR$/rlox-treewalk/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bb778ed8-2093-4b3c-be77-333146542cd5" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/class_type.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/function_type.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/lox_callable.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/lox_class.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/lox_function.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/rlox/src/grammar/visitor.rs" afterDir="false" />
+    <list default="true" id="cc1eb899-0882-4055-8f62-e25287aa02e4" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox-core/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/lox.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/lox.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/grammar/expr.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/grammar/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/grammar/stmt.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/interpreter.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/interpreter.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/resolver.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox/src/resolver.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.metals/metals.h2.db" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.metals/metals.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/Cargo.lock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/Cargo.toml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/environment.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/error.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/class_type.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/expr.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/function_type.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/lox_callable.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/lox_class.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/lox_function.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/mod.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/stmt.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/visitor.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/interpreter.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/literal.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/main.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/parser.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/resolver.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/runner.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/scanner.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/system_calls.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/tests.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/token.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/src/token_type.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/class.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/closures-scopes.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/closures1.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/closures2.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/for.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/if-else.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/inheritance.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/lambdas.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/recursion1.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/recursion2.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/scopes_class.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/scopes_functions.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/scopes_inheritance.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/scopes_variables.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/test.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox/tests/while.lx" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -35,43 +79,51 @@
   <component name="CodeStyleSettingsInfer">
     <option name="done" value="true" />
   </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Rust File" />
+      </list>
+    </option>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="MacroExpansionManager">
-    <option name="directoryName" value="q8s0bn9i" />
+    <option name="directoryName" value="uiemg22n" />
   </component>
   <component name="ProjectCodeStyleSettingsMigration">
     <option name="version" value="1" />
   </component>
-  <component name="ProjectId" id="1ilxFefYcQFZgO1IxMXX6ZHd7Ic" />
-  <component name="ProjectLevelVcsManager">
-    <ConfirmationsSetting value="2" id="Add" />
-  </component>
+  <component name="ProjectId" id="1jOo6WgaJAgcnaGcCS2u5aTQw0j" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
-    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
-    <property name="ASKED_SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/rlox" />
     <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
-    <property name="settings.editor.selected.configurable" value="preferences.keymap" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/rlox-treewalk/src/runtime" />
+      <recent name="$PROJECT_DIR$/rlox-treewalk/src/bin" />
+      <recent name="$PROJECT_DIR$/rlox-treewalk/src" />
+      <recent name="$PROJECT_DIR$/rlox-core/src/" />
+    </key>
   </component>
   <component name="RustProjectSettings">
-    <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
+    <option name="toolchainHomeDirectory" value="/usr/bin" />
     <option name="version" value="2" />
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="bb778ed8-2093-4b3c-be77-333146542cd5" name="Default Changelist" comment="" />
-      <created>1602495891140</created>
+      <changelist id="cc1eb899-0882-4055-8f62-e25287aa02e4" name="Default Changelist" comment="" />
+      <created>1603684323355</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1602495891140</updated>
+      <updated>1603684323355</updated>
     </task>
     <servers />
   </component>
@@ -87,30 +139,19 @@
     </option>
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
-  <component name="VcsManagerConfiguration">
-    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
-  </component>
   <component name="WindowStateProjectService">
-    <state x="586" y="198" key="#Inspections" timestamp="1602590302426">
-      <screen x="0" y="0" width="1920" height="1040" />
-    </state>
-    <state x="586" y="198" key="#Inspections/-1366.304.1366.728/0.0.1920.1040@0.0.1920.1040" timestamp="1602590302426" />
-    <state x="2004" y="387" width="643" height="340" key="#Rust" timestamp="1603638463019">
+    <state x="1956" y="237" key="#Inspections" timestamp="1603689014160">
       <screen x="1366" y="0" width="1920" height="1080" />
     </state>
-    <state x="2004" y="387" width="643" height="340" key="#Rust/1366.0.1920.1080/0.156.1366.768@1366.0.1920.1080" timestamp="1603638463019" />
-    <state x="2110" y="314" key="FileChooserDialogImpl" timestamp="1603607397319">
-      <screen x="1366" y="0" width="1920" height="1080" />
+    <state x="1956" y="237" key="#Inspections/1366.0.1920.1080/0.156.1366.768@1366.0.1920.1080" timestamp="1603689014160" />
+    <state x="141" y="60" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1603689151040">
+      <screen x="0" y="36" width="1366" height="732" />
     </state>
-    <state x="2110" y="314" key="FileChooserDialogImpl/1366.0.1920.1080/0.156.1366.768@1366.0.1920.1080" timestamp="1603607397319" />
-    <state x="1823" y="191" key="SettingsEditor" timestamp="1603607481204">
-      <screen x="1366" y="0" width="1920" height="1080" />
-    </state>
-    <state x="1823" y="191" key="SettingsEditor/1366.0.1920.1080/0.156.1366.768@1366.0.1920.1080" timestamp="1603607481204" />
-    <state x="472" y="211" width="562" height="557" key="find.popup" timestamp="1603607882466">
+    <state x="141" y="60" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.36.1366.732@0.36.1366.732" timestamp="1603689151040" />
+    <state x="692" y="268" width="672" height="498" key="search.everywhere.popup" timestamp="1603689070781">
       <screen x="0" y="156" width="1366" height="768" />
     </state>
-    <state x="472" y="211" width="562" height="557" key="find.popup/1366.0.1920.1080/0.156.1366.768@0.156.1366.768" timestamp="1603607882466" />
-    <state x="2030" y="165" width="592" height="783" key="find.popup/1366.0.1920.1080/0.156.1366.768@1366.0.1920.1080" timestamp="1603607341217" />
+    <state x="1989" y="262" width="672" height="678" key="search.everywhere.popup/0.34.3286.1046@0.34.3286.1046" timestamp="1603688565194" />
+    <state x="692" y="268" width="672" height="498" key="search.everywhere.popup/1366.0.1920.1080/0.156.1366.768@0.156.1366.768" timestamp="1603689070781" />
   </component>
 </project>

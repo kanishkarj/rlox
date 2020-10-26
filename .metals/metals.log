@@ -1,6 +1,0 @@
-2020.10.14 09:57:23 INFO  started: Metals version 0.9.4 in workspace '/mnt/f/lox' for client vscode.
-2020.10.14 09:57:27 INFO  time: initialize in 3.5s
-2020.10.14 09:57:30 WARN  no build tool detected in workspace '/mnt/f/lox'. The most common cause for this problem is that the editor was opened in the wrong working directory, for example if you use sbt then the workspace directory should contain build.sbt. 
-Oct 14, 2020 10:11:35 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
-INFO: Unsupported notification method: $/setTraceNotification
-2020.10.14 22:32:17 INFO  shutting down Metals

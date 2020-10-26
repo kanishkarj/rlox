@@ -1,5 +1,0 @@
-var mult4 = fun (x) {
-    return (x*4);
-};
-
-print mult4(6);
