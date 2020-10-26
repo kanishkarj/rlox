@@ -18,58 +18,283 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="cc1eb899-0882-4055-8f62-e25287aa02e4" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/rlox-core/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox_core/src/tests/arguments.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox_core/src/tests/assignment.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox_core/src/tests/block.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox_core/src/tests/bool.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox_core/src/tests/call.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox_core/src/tests/class.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox_core/src/tests/closure.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox_core/src/tests/function.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox_core/src/tests/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox_vm/Cargo.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rlox_vm/src/main.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/test_gen.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sys" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/assignment/associativity.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/assignment/global.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/assignment/grouping.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/assignment/infix_operator.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/assignment/local.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/assignment/prefix_operator.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/assignment/syntax.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/assignment/to_this.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/assignment/undefined.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/benchmark/binary_trees.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/benchmark/equality.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/benchmark/fib.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/benchmark/instantiation.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/benchmark/invocation.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/benchmark/method_call.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/benchmark/properties.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/benchmark/string_equality.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/benchmark/trees.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/benchmark/zoo.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/block/empty.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/block/scope.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/bool/equality.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/bool/not.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/call/bool.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/call/nil.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/call/num.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/call/object.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/call/string.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/class/empty.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/class/inherit_self.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/class/inherited_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/class/local_inherit_other.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/class/local_inherit_self.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/class/local_reference_self.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/class/reference_self.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/assign_to_closure.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/assign_to_shadowed_later.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/close_over_function_parameter.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/close_over_later_variable.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/close_over_method_parameter.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/closed_closure_in_function.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/nested_closure.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/open_closure_in_function.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/reference_closure_multiple_times.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/reuse_closure_slot.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/shadow_closure_with_local.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/unused_closure.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/closure/unused_later_closure.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/comments/line_at_eof.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/comments/only_line_comment.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/comments/only_line_comment_and_line.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/comments/unicode.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/constructor/arguments.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/constructor/call_init_early_return.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/constructor/call_init_explicitly.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/constructor/default.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/constructor/default_arguments.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/constructor/early_return.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/constructor/extra_arguments.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/constructor/init_not_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/constructor/missing_arguments.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/constructor/return_in_nested_function.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/constructor/return_value.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/empty_file.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/expressions/evaluate.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/expressions/parse.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/call_function_field.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/call_nonfunction_field.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/get_and_set_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/get_on_bool.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/get_on_class.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/get_on_function.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/get_on_nil.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/get_on_num.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/get_on_string.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/many.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/method_binds_this.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/on_instance.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/set_evaluation_order.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/set_on_bool.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/set_on_class.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/set_on_function.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/set_on_nil.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/set_on_num.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/set_on_string.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/field/undefined.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/for/class_in_body.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/for/closure_in_body.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/for/fun_in_body.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/for/return_closure.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/for/return_inside.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/for/scope.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/for/statement_condition.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/for/statement_increment.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/for/statement_initializer.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/for/syntax.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/for/var_in_body.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/function/body_must_be_block.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/function/empty_body.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/function/extra_arguments.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/function/local_mutual_recursion.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/function/local_recursion.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/function/missing_arguments.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/function/missing_comma_in_parameters.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/function/mutual_recursion.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/function/parameters.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/function/recursion.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/if/class_in_else.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/if/class_in_then.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/if/dangling_else.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/if/else.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/if/fun_in_else.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/if/fun_in_then.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/if/if.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/if/truth.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/if/var_in_else.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/if/var_in_then.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/inheritance/constructor.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/inheritance/inherit_from_function.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/inheritance/inherit_from_nil.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/inheritance/inherit_from_number.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/inheritance/inherit_methods.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/inheritance/parenthesized_superclass.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/inheritance/set_fields_from_base_class.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/limit/loop_too_large.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/limit/no_reuse_constants.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/limit/stack_overflow.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/limit/too_many_constants.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/limit/too_many_locals.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/limit/too_many_upvalues.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/logical_operator/and.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/logical_operator/and_truth.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/logical_operator/or.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/logical_operator/or_truth.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/method/arity.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/method/empty_block.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/method/extra_arguments.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/method/missing_arguments.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/method/not_found.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/method/print_bound_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/method/refer_to_name.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/method/too_many_arguments.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/method/too_many_parameters.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/nil/literal.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/number/decimal_point_at_eof.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/number/leading_dot.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/number/literals.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/number/nan_equality.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/number/trailing_dot.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/add.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/add_bool_nil.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/add_bool_num.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/add_bool_string.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/add_nil_nil.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/add_num_nil.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/add_string_nil.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/comparison.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/divide.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/divide_nonnum_num.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/divide_num_nonnum.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/equals.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/equals_class.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/equals_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/greater_nonnum_num.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/greater_num_nonnum.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/greater_or_equal_nonnum_num.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/greater_or_equal_num_nonnum.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/less_nonnum_num.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/less_num_nonnum.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/less_or_equal_nonnum_num.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/less_or_equal_num_nonnum.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/multiply.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/multiply_nonnum_num.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/multiply_num_nonnum.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/negate.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/negate_nonnum.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/not.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/not_class.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/not_equals.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/subtract.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/subtract_nonnum_num.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/operator/subtract_num_nonnum.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/precedence.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/print/missing_argument.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/regression/394.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/regression/40.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/return/after_else.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/return/after_if.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/return/after_while.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/return/at_top_level.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/return/in_function.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/return/in_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/return/return_nil_if_no_value.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/scanning/identifiers.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/scanning/keywords.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/scanning/numbers.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/scanning/punctuators.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/scanning/strings.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/scanning/whitespace.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/string/error_after_multiline.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/string/literals.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/string/multiline.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/string/unterminated.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/bound_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/call_other_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/call_same_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/closure.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/constructor.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/extra_arguments.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/indirectly_inherited.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/missing_arguments.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/no_superclass_bind.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/no_superclass_call.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/no_superclass_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/parenthesized.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/reassign_superclass.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/super_at_top_level.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/super_in_closure_in_inherited_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/super_in_inherited_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/super_in_top_level_function.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/super_without_dot.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/super_without_name.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/super/this_in_superclass_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/this/closure.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/this/nested_class.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/this/nested_closure.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/this/this_at_top_level.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/this/this_in_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/this/this_in_top_level_function.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/unexpected_character.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/collide_with_parameter.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/duplicate_local.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/duplicate_parameter.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/early_bound.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/in_middle_of_block.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/in_nested_block.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/local_from_method.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/redeclare_global.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/redefine_global.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/scope_reuse_in_different_blocks.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/shadow_and_local.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/shadow_global.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/shadow_local.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/undefined_global.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/undefined_local.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/uninitialized.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/unreached_undefined.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/use_false_as_var.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/use_global_in_initializer.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/use_local_in_initializer.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/use_nil_as_var.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/variable/use_this_as_var.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/while/class_in_body.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/while/closure_in_body.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/while/fun_in_body.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/while/return_closure.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/while/return_inside.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/while/syntax.lox" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test-scripts/while/var_in_body.lox" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/lox.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/lox.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.metals/metals.h2.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.metals/metals.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/Cargo.lock" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/Cargo.toml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/environment.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/error.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/class_type.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/expr.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/function_type.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/lox_callable.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/lox_class.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/lox_function.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/stmt.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/grammar/visitor.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/interpreter.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/literal.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/main.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/parser.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/resolver.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/runner.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/scanner.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/system_calls.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/tests.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/token.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/src/token_type.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/class.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/closures-scopes.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/closures1.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/closures2.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/for.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/if-else.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/inheritance.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/lambdas.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/recursion1.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/recursion2.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/scopes_class.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/scopes_functions.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/scopes_inheritance.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/scopes_variables.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/test.lx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rlox/tests/while.lx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rlox-core/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rlox_core/src/lib.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -96,16 +321,29 @@
     <option name="version" value="1" />
   </component>
   <component name="ProjectId" id="1jOo6WgaJAgcnaGcCS2u5aTQw0j" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/rlox_core/src/tests" />
     <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
+    <property name="org.rust.disableDetachedFileInspection/run/media/kanishkarj/Work/lox/rlox_core/src/tests/mod.rs" value="true" />
+    <property name="project.structure.last.edited" value="Modules" />
+    <property name="project.structure.proportion" value="0.0" />
+    <property name="project.structure.side.proportion" value="0.0" />
   </component>
   <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/rlox_core/src/tests" />
+    </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/rlox-core/src" />
       <recent name="$PROJECT_DIR$/rlox-treewalk/src/runtime" />
       <recent name="$PROJECT_DIR$/rlox-treewalk/src/bin" />
       <recent name="$PROJECT_DIR$/rlox-treewalk/src" />
@@ -125,6 +363,14 @@
       <option name="presentableId" value="Default" />
       <updated>1603684323355</updated>
     </task>
+    <task id="LOCAL-00001" summary="Complete project reorganization">
+      <created>1603689630257</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1603689630258</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -139,19 +385,45 @@
     </option>
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
+  <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+    <MESSAGE value="Complete project reorganization" />
+    <option name="LAST_COMMIT_MESSAGE" value="Complete project reorganization" />
+  </component>
   <component name="WindowStateProjectService">
     <state x="1956" y="237" key="#Inspections" timestamp="1603689014160">
       <screen x="1366" y="0" width="1920" height="1080" />
     </state>
     <state x="1956" y="237" key="#Inspections/1366.0.1920.1080/0.156.1366.768@1366.0.1920.1080" timestamp="1603689014160" />
+    <state x="166" y="36" width="1032" height="732" key="#Project_Structure" timestamp="1603705254632">
+      <screen x="0" y="36" width="1366" height="732" />
+    </state>
+    <state x="166" y="36" width="1032" height="732" key="#Project_Structure/0.36.1366.732@0.36.1366.732" timestamp="1603705254632" />
     <state x="141" y="60" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1603689151040">
       <screen x="0" y="36" width="1366" height="732" />
     </state>
     <state x="141" y="60" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.36.1366.732@0.36.1366.732" timestamp="1603689151040" />
-    <state x="692" y="268" width="672" height="498" key="search.everywhere.popup" timestamp="1603689070781">
-      <screen x="0" y="156" width="1366" height="768" />
+    <state x="2135" y="275" key="#com.intellij.ide.util.MemberChooser" timestamp="1603718851945">
+      <screen x="0" y="34" width="3286" height="1046" />
     </state>
-    <state x="1989" y="262" width="672" height="678" key="search.everywhere.popup/0.34.3286.1046@0.34.3286.1046" timestamp="1603688565194" />
+    <state x="2135" y="275" key="#com.intellij.ide.util.MemberChooser/0.34.3286.1046@0.34.3286.1046" timestamp="1603718851945" />
+    <state width="498" height="446" key="SwitcherDM" timestamp="1603732434145">
+      <screen x="0" y="34" width="3286" height="1046" />
+    </state>
+    <state width="498" height="446" key="SwitcherDM/0.34.3286.1046@0.34.3286.1046" timestamp="1603732434145" />
+    <state x="2030" y="165" width="592" height="783" key="find.popup" timestamp="1603715535577">
+      <screen x="0" y="34" width="3286" height="1046" />
+    </state>
+    <state x="2030" y="165" width="592" height="783" key="find.popup/0.34.3286.1046@0.34.3286.1046" timestamp="1603715535577" />
+    <state x="1990" y="257" key="run.anything.popup" timestamp="1603721640779">
+      <screen x="0" y="34" width="3286" height="1046" />
+    </state>
+    <state x="1990" y="257" key="run.anything.popup/0.34.3286.1046@0.34.3286.1046" timestamp="1603721640779" />
+    <state x="1989" y="262" width="672" height="678" key="search.everywhere.popup" timestamp="1603736001586">
+      <screen x="0" y="34" width="3286" height="1046" />
+    </state>
+    <state x="1989" y="262" width="672" height="678" key="search.everywhere.popup/0.34.3286.1046@0.34.3286.1046" timestamp="1603736001586" />
+    <state x="692" y="143" width="672" height="475" key="search.everywhere.popup/0.36.1366.732@0.36.1366.732" timestamp="1603707376808" />
     <state x="692" y="268" width="672" height="498" key="search.everywhere.popup/1366.0.1920.1080/0.156.1366.768@0.156.1366.768" timestamp="1603689070781" />
   </component>
 </project>

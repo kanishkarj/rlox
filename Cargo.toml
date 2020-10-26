@@ -1,5 +1,6 @@
 [workspace]
 
 members = [
-    "rlox-core"
+    "rlox_core",
+    "rlox_vm"
 ]
