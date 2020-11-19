@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use crate::frontend::parser::Parser;
 use crate::frontend::lexer::*;
 use std::fs::read_to_string;
@@ -46,17 +48,17 @@ macro_rules! test_line {
             if let Some(Object::Class(cl)) = val {
                 assert_eq!(cl.name, f.name);
             } else {
-                // panic!("[from script: {}][tested for: {:?}]",val.unwrap(),$expected_val);
+                panic!("[from script(class): {}][tested for: {:?}]",val.unwrap(),$expected_val);
             }
         } else if let Some(f) = (&$expected_val as &dyn Any).downcast_ref::<LoxInstance>() {
             if let Some(Object::Instance(cl)) = val {
                 assert_eq!(cl.klass.name, f.klass.name);
             } else {
-                // panic!("[from script: {}][tested for: {:?}]",val.unwrap(),$expected_val);
+                panic!("[from script(instance): {}][tested for: {:?}]",val.unwrap(),$expected_val);
             }
         } else {
             // NOTE: this can happen if the type of param is not correctly passed
-            // panic!("[from script: {:?}][tested for: {:?}]",val,$expected_val);
+            panic!("[from script: {:?}][tested for: {:?}]",val,$expected_val);
         }
         // assert_eq!($res_vec.pop(), Some($expected_val));
     };
@@ -71,6 +73,16 @@ macro_rules! test_succeed {
             run_script($file_path, &mut interpreter).unwrap();
             let mut print_cache = print_cache.borrow_mut();
             test_line!(print_cache, $($expected_vals),+);
+            assert_eq!(print_cache.pop(), None);
+        }
+    };
+    ($test_name:ident, $file_path: literal) => {
+        #[test]
+        fn $test_name() {
+            let print_cache = Rc::new(RefCell::new(vec![]));
+            let mut interpreter = Interpreter::new(Rc::new(RefCell::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)})));
+            run_script($file_path, &mut interpreter).unwrap();
+            let mut print_cache = print_cache.borrow_mut();
             assert_eq!(print_cache.pop(), None);
         }
     };
@@ -89,6 +101,9 @@ macro_rules! test_fail {
                     (ParserError(lex1,line1,_), ParserError(lex2,line2,_))  if lex1 == lex2 && line1 == line2 => {},
                     (RuntimeError(lex1,line1,_), RuntimeError(lex2,line2,_)) if lex1 == lex2 && line1 == line2  => {},
                     (SemanticError(lex1,line1,_), SemanticError(lex2,line2,_)) if lex1 == lex2 && line1 == line2  => {},
+                    (Break(line1), Break(line2)) if line1 == line2  => {},
+                    (Continue(line1), Continue(line2)) if line1 == line2  => {},
+                    (ReturnVal(_, line1), ReturnVal(_, line2)) if line1 == line2  => {},
                     _ => {panic!("unhandled error {:?}", err)},
                 }
                 return;
@@ -118,3 +133,23 @@ mod class;
 mod closure;
 mod function;
 mod for_stmt;
+mod return_stmt;
+mod field;
+mod constructor;
+mod inheritance;
+mod if_stmt;
+mod logical_operator;
+mod method;
+mod nil;
+mod number;
+mod operator;
+mod string;
+mod super_stmt;
+mod this;
+mod variable;
+mod while_stmt;
+mod print;
+mod regression;
+mod comments;
+mod miscellaneous;
+mod break_stmt;

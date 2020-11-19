@@ -1,0 +1,16 @@
+[package]
+name = "rlox_core"
+version = "0.1.0"
+authors = ["kanishkarj"]
+edition = "2018"
+
+[lib]
+name = "rlox_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rlox_treewalker"
+path = "src/bin/main.rs"
+
+[dependencies]
+logos = "0.11.4"

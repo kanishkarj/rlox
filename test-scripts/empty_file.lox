@@ -1,0 +1,31 @@
+// print v;
+
+
+for(var i = 0; i < 3; i = i + 1) {
+    var y = 6;
+    print "hmm";
+    y = y + 1;
+    print y;
+}
+
+var i=5;
+{
+    var j = 4;
+    print i;
+    print j;
+    {
+        var z = 3;
+        print j;
+        print z;
+        {
+            var k = 2;
+            print z;
+            print k;
+            {
+                var l = 1;
+                print k;
+                print l;
+            }
+        }
+    }
+}

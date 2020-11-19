@@ -52,11 +52,11 @@ test_fail!(
 test_succeed!(
     local_reference_self,
     "../test-scripts/class/local_reference_self.lox",
-    LoxInstance::new(LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None))
+    LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None)
 );
 
 test_succeed!(
     reference_self,
     "../test-scripts/class/reference_self.lox",
-    LoxInstance::new(LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None))
+    LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None)
 );
