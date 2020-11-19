@@ -9,10 +9,6 @@ files = glob.glob(dir_name + "/*.lox")
 out_filename =  dir_name.split("/")[-1] if not dir_name.split("/")[-1] == "" else dir_name.split("/")[-2]
 out_filename =  "rlox_core/src/tests/" + out_filename + ".rs"
 
-# print(files, out_filename)
-#  arr = os.listdir(dir_name)
-# print(arr)
-
 out_string = """
 use crate::frontend::parser::Parser;
 use crate::frontend::lexer::*;
@@ -30,6 +26,7 @@ use std::rc::Rc;
 use crate::runtime::definitions::object::Object;
 use crate::error::LoxError;
 use super::*;
+
 """
 
 for test_file in files:
@@ -45,7 +42,7 @@ for test_file in files:
             );\n
             """.format(test_name=test_name, test_file=test_file)
         else:
-            tests = re.findall("expect: [a-zA-Z_0-9 <>]*", file_str)
+            tests = re.findall("expect: .*$", file_str, flags=re.MULTILINE)
             tests = [x.split(": ")[1] for x in tests]
             if len(tests) > 0 :
                 out_string += """
@@ -55,9 +52,6 @@ for test_file in files:
                     {test_values}
                 );\n
                 """.format(test_name=test_name, test_values=",".join(tests), test_file=test_file)
-        
-
-
-
+                
 with open(str(out_filename), "w") as file:
     file.write(out_string)
