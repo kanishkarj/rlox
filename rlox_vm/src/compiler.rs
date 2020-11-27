@@ -1,5 +1,9 @@
+use crate::chunk::FuncSpec;
+use crate::chunk::FunctionType;
+use core::cell::RefCell;
+use std::rc::Rc;
 use rlox_core::frontend::definitions::token::Token;
-use rlox_core::runtime::definitions::object::Object;
+use crate::chunk::Object;
 use crate::VM;
 use rlox_core::frontend::definitions::stmt::*;
 use rlox_core::frontend::definitions::literal::Literal;
@@ -14,7 +18,7 @@ use crate::chunk::OpCode;
 use std::fs::read_to_string;
 use std::path::Path;
 use rlox_core::frontend::definitions::token_type::TokenType;
-
+use crate::chunk::Local;
 pub fn run_file(path: &String) {
     let path = Path::new(path);
     let script = read_to_string(path).unwrap();
@@ -27,31 +31,32 @@ fn run(script: &String) -> Result<(), LoxError> {
     let mut ast = Parser::new(Lexer::new().parse(script)?).parse()?;
     Resolver::new().resolve(&mut ast)?;
     // you have the ast here.
-    let mut comp = Compiler{chunk: vec![], constant_pool: vec![], scope_depth:0,local_count:0, locals: vec![]};
+    let mut comp = Compiler::new();
     ast.accept(&mut comp)?;
-    comp.chunk.push(OpCode::Return(0));
-    println!("{:?}", comp.chunk);
-    let mut vm = VM::new(comp.chunk, comp.constant_pool);
+    comp.curr_fn.chunks.push(OpCode::Exit(0));
+    println!("{:?}", comp.curr_fn.chunks);
+    let mut vm = VM::new(comp.constant_pool, comp.curr_fn);
     vm.run(false);
     Ok(())
 }
 
-struct Local {
-    name: Token,
-    depth: i32,
-}
 
 struct Compiler{
-    pub chunk: Vec<OpCode>,
+    // pub chunk: Vec<OpCode>,
     pub constant_pool: Vec<Object>,
-    
-    pub scope_depth: i32,
-    pub locals: Vec<Local>,
-    pub local_count: u32,
-    
+    pub curr_fn: FuncSpec 
 }
 
 impl Compiler {
+    pub fn new() -> Self {
+        Compiler {
+            // chunk: vec![],
+            constant_pool: vec![],
+            curr_fn: FuncSpec::new(0, None, FunctionType::SCRIPT),
+            // scope_depth:0,
+            // locals: vec![],
+        }
+    }
     pub fn add_const(&mut self, val: Object) -> usize {
         self.constant_pool.push(val);
         self.constant_pool.len()-1
@@ -67,8 +72,8 @@ impl Compiler {
         }
     }
     fn resolve_local(&mut self, token: &Token) -> i32 {
-        for i in (0..self.locals.len()).rev() {
-            if self.locals[i].name.lexeme == token.lexeme {
+        for i in (0..self.curr_fn.locals.len()).rev() {
+            if self.curr_fn.locals[i].name.lexeme == token.lexeme {
                 return i as i32;
             }
         }
@@ -78,35 +83,36 @@ impl Compiler {
         let mut x = self.resolve_local(token);
         if x == -1 {
             x = self.add_const(Object::Str(token.lexeme.clone())) as i32;
-            self.chunk.push(OpCode::GetGlobal(token.line_no, x as usize));
+            self.curr_fn.chunks.push(OpCode::GetGlobal(token.line_no, x as usize));
         } else {
-            self.chunk.push(OpCode::GetLocal(token.line_no, x as usize));
+            self.curr_fn.chunks.push(OpCode::GetLocal(token.line_no, x as usize));
         }
     }
     fn begin_scope(&mut self) {
-        self.scope_depth += 1;
+        self.curr_fn.scope_depth += 1;
     }
     fn end_scope(&mut self) {
-        self.scope_depth -= 1;
-        while self.local_count > 0 && self.locals.last().unwrap().depth > self.scope_depth {
-            self.chunk.push(OpCode::StackPop);
-            self.local_count -= 1;
-            self.locals.pop();
+        self.curr_fn.scope_depth -= 1;
+        while let Some(lc) = self.curr_fn.locals.last() {
+            if lc.depth <= self.curr_fn.scope_depth {
+                break;
+            }
+            self.curr_fn.chunks.push(OpCode::StackPop);
+            self.curr_fn.locals.pop();
         }
     }
-    fn declare_variable(&mut self, val: &Var) -> Result<(),LoxError>{
-        if self.scope_depth == 0 {return Ok(())};
-        let local = Local{name: val.name.clone(), depth: self.scope_depth};
-        for lc in self.locals.iter().rev() {
-            if lc.depth != -1 && lc.depth < self.scope_depth {
+    fn declare_variable(&mut self, val: &Token) -> Result<(),LoxError>{
+        if self.curr_fn.scope_depth == 0 {return Ok(())};
+        let local = Local{name: val.clone(), depth: self.curr_fn.scope_depth};
+        for lc in self.curr_fn.locals.iter().rev() {
+            if lc.depth != -1 && lc.depth < self.curr_fn.scope_depth {
                 break;
             }
             if local.name.lexeme == lc.name.lexeme {
                 return Err(LoxError::RuntimeError(String::from(""), local.name.line_no, String::from("")))
             }
         }
-        self.local_count+=1;
-        self.locals.push(local);
+        self.curr_fn.locals.push(local);
         Ok(())
     }
 }
@@ -116,23 +122,28 @@ impl Visitor<()> for Compiler {
         val.left.accept(self)?;
         val.right.accept(self)?;
         match val.operator.token_type {
-            TokenType::MINUS => self.chunk.push(OpCode::Subs(val.operator.line_no)),
-            TokenType::PLUS => self.chunk.push(OpCode::Add(val.operator.line_no)),
-            TokenType::STAR => self.chunk.push(OpCode::Multiply(val.operator.line_no)),
-            TokenType::SLASH => self.chunk.push(OpCode::Divide(val.operator.line_no)),
-            TokenType::EqualEqual => self.chunk.push(OpCode::EqualTo(val.operator.line_no)),
-            TokenType::BangEqual => self.chunk.push(OpCode::NotEqualTo(val.operator.line_no)),
-            TokenType::GREATER => self.chunk.push(OpCode::GreaterThan(val.operator.line_no)),
-            TokenType::GreaterEqual => self.chunk.push(OpCode::GreaterThanEq(val.operator.line_no)),
-            TokenType::LESS => self.chunk.push(OpCode::LesserThan(val.operator.line_no)),
-            TokenType::LessEqual => self.chunk.push(OpCode::LesserThanEq(val.operator.line_no)),
+            TokenType::MINUS => self.curr_fn.chunks.push(OpCode::Subs(val.operator.line_no)),
+            TokenType::PLUS => self.curr_fn.chunks.push(OpCode::Add(val.operator.line_no)),
+            TokenType::STAR => self.curr_fn.chunks.push(OpCode::Multiply(val.operator.line_no)),
+            TokenType::SLASH => self.curr_fn.chunks.push(OpCode::Divide(val.operator.line_no)),
+            TokenType::EqualEqual => self.curr_fn.chunks.push(OpCode::EqualTo(val.operator.line_no)),
+            TokenType::BangEqual => self.curr_fn.chunks.push(OpCode::NotEqualTo(val.operator.line_no)),
+            TokenType::GREATER => self.curr_fn.chunks.push(OpCode::GreaterThan(val.operator.line_no)),
+            TokenType::GreaterEqual => self.curr_fn.chunks.push(OpCode::GreaterThanEq(val.operator.line_no)),
+            TokenType::LESS => self.curr_fn.chunks.push(OpCode::LesserThan(val.operator.line_no)),
+            TokenType::LessEqual => self.curr_fn.chunks.push(OpCode::LesserThanEq(val.operator.line_no)),
             _ => return Err(LoxError::SemanticError(String::from(""),val.operator.line_no,String::from("")))
         }
         Ok(())
     }
 
     fn visit_call_expr(&mut self, val: &Call) -> Result<(), LoxError> {
-        todo!();
+        val.callee.accept(self)?;
+        for arg in &val.arguments {
+            arg.accept(self)?;
+        }
+        self.curr_fn.chunks.push(OpCode::FnCall(0, val.arguments.len()));
+        Ok(())
     }
 
     fn visit_grouping_expr(&mut self, val: &Grouping) -> Result<(), LoxError> {
@@ -144,13 +155,14 @@ impl Visitor<()> for Compiler {
             return Err(LoxError::RuntimeError(String::from(""), val.operator.line_no, String::from("")))
         }
         val.right.accept(self)?;
-        self.chunk.push(OpCode::Negate(val.operator.line_no));
+        self.curr_fn.chunks.push(OpCode::Negate(val.operator.line_no));
         Ok(())
     }
 
     fn visit_literal_expr(&mut self, val: &Literal) -> Result<(), LoxError> {
         let x = self.add_const(val.clone().into());
-        self.chunk.push(OpCode::Constant(0, x));
+        // println!("{:?} -> {}", val, x);
+        self.curr_fn.chunks.push(OpCode::Constant(0, x));
         Ok(())
     }
 
@@ -158,8 +170,8 @@ impl Visitor<()> for Compiler {
         val.left.accept(self)?;
         val.right.accept(self)?;
         match val.operator.token_type {
-            TokenType::AND => self.chunk.push(OpCode::BoolAnd(val.operator.line_no)),
-            TokenType::OR => self.chunk.push(OpCode::BoolOr(val.operator.line_no)),
+            TokenType::AND => self.curr_fn.chunks.push(OpCode::BoolAnd(val.operator.line_no)),
+            TokenType::OR => self.curr_fn.chunks.push(OpCode::BoolOr(val.operator.line_no)),
             _ => return Err(LoxError::RuntimeError(String::from(""), val.operator.line_no, String::from("")))
         };
         Ok(())
@@ -188,13 +200,13 @@ impl Visitor<()> for Compiler {
     fn visit_expression_stmt(&mut self, val: &Expression) -> Result<(), LoxError> {
         // println!("{:?}", val);
         val.expr.accept(self)?;
-        self.chunk.push(OpCode::StackPop);
+        self.curr_fn.chunks.push(OpCode::StackPop);
         Ok(())
     }
 
     fn visit_print_stmt(&mut self, val: &Print) -> Result<(), LoxError> {
         val.expr.accept(self)?;
-        self.chunk.push(OpCode::Print(0));
+        self.curr_fn.chunks.push(OpCode::Print(0));
         Ok(())
     }
 
@@ -207,15 +219,15 @@ impl Visitor<()> for Compiler {
         if let Some(init) = &val.initializer {
             init.accept(self)?;
         } else {
-            self.chunk.push(OpCode::NilVal);
+            self.curr_fn.chunks.push(OpCode::NilVal);
         }
-        // println!("{} {}", val.name.lexeme, self.scope_depth);
+        // println!("{} {}", val.name.lexeme, self.curr_fn.scope_depth);
         // special handling of locals
-        self.declare_variable(val)?;
-        if self.scope_depth > 0 {return Ok(())}
+        self.declare_variable(&val.name)?;
+        if self.curr_fn.scope_depth > 0 {return Ok(())}
         
         let x = self.add_const(Object::Str(val.name.lexeme.clone()));
-        self.chunk.push(OpCode::DefineGlobal(val.name.line_no, x));
+        self.curr_fn.chunks.push(OpCode::DefineGlobal(val.name.line_no, x));
 
         Ok(())
     }
@@ -227,9 +239,9 @@ impl Visitor<()> for Compiler {
         if x == -1 {
             // TODO: think of better approach
             x = self.add_const(Object::Str(val.name.lexeme.clone())) as i32;
-            self.chunk.push(OpCode::SetGlobal(val.name.line_no, x as usize));
+            self.curr_fn.chunks.push(OpCode::SetGlobal(val.name.line_no, x as usize));
         } else {
-            self.chunk.push(OpCode::SetLocal(val.name.line_no, x as usize));
+            self.curr_fn.chunks.push(OpCode::SetLocal(val.name.line_no, x as usize));
         }
 
         Ok(())
@@ -244,40 +256,40 @@ impl Visitor<()> for Compiler {
     fn visit_if_stmt(&mut self, val: &If) -> Result<(), LoxError> {
         val.condition.accept(self)?;
         // change the 9999 to some sentinel value, in compile mode verify the jump does not point to any sentinel value.
-        self.chunk.push(OpCode::JumpIfFalse(0, 9999));
-        let then_jump = self.chunk.len()-1;
-        self.chunk.push(OpCode::StackPop);
+        self.curr_fn.chunks.push(OpCode::JumpIfFalse(0, 9999));
+        let then_jump = self.curr_fn.chunks.len()-1;
+        self.curr_fn.chunks.push(OpCode::StackPop);
 
         val.then_branch.accept(self)?;
 
-        self.chunk.push(OpCode::Jump(0, 9999));
-        let else_jump = self.chunk.len()-1;
+        self.curr_fn.chunks.push(OpCode::Jump(0, 9999));
+        let else_jump = self.curr_fn.chunks.len()-1;
         
-        self.chunk[then_jump] = OpCode::JumpIfFalse(0, self.chunk.len()-1);
-        self.chunk.push(OpCode::StackPop);
+        self.curr_fn.chunks[then_jump] = OpCode::JumpIfFalse(0, self.curr_fn.chunks.len()-1);
+        self.curr_fn.chunks.push(OpCode::StackPop);
 
         if let Some(else_branch) = &val.else_branch {
             else_branch.accept(self)?;
         }
-        self.chunk[else_jump] = OpCode::Jump(0, self.chunk.len()-1);
+        self.curr_fn.chunks[else_jump] = OpCode::Jump(0, self.curr_fn.chunks.len()-1);
 
         Ok(())
     }
 
     fn visit_while_stmt(&mut self, val: &While) -> Result<(), LoxError> {
-        let loop_start = self.chunk.len()-1;
-        self.chunk.push(OpCode::NoOp);
+        let loop_start = self.curr_fn.chunks.len();
+        self.curr_fn.chunks.push(OpCode::NoOp);
         val.condition.accept(self)?;
         
-        self.chunk.push(OpCode::JumpIfFalse(0, 9999));
-        let then_jump = self.chunk.len()-1;
-        self.chunk.push(OpCode::StackPop);
+        self.curr_fn.chunks.push(OpCode::JumpIfFalse(0, 9999));
+        let then_jump = self.curr_fn.chunks.len()-1;
+        self.curr_fn.chunks.push(OpCode::StackPop);
 
         val.body.accept(self)?;
 
-        self.chunk.push(OpCode::Jump(0, loop_start));
-        self.chunk[then_jump] = OpCode::JumpIfFalse(0, self.chunk.len()-1);
-        self.chunk.push(OpCode::StackPop);
+        self.curr_fn.chunks.push(OpCode::Jump(0, loop_start));
+        self.curr_fn.chunks[then_jump] = OpCode::JumpIfFalse(0, self.curr_fn.chunks.len());
+        self.curr_fn.chunks.push(OpCode::StackPop);
         Ok(())
     }
 
@@ -290,11 +302,44 @@ impl Visitor<()> for Compiler {
     }
 
     fn visit_function_stmt(&mut self, val: &Function) -> Result<(), LoxError> {
-        todo!();
+        let mut new_func = FuncSpec::new(0, Some(val.name.lexeme.clone()), FunctionType::FUNCTION);
+        new_func = std::mem::replace(&mut self.curr_fn, new_func);
+        self.begin_scope();
+        
+        self.curr_fn.arity = val.params.len() as u32;
+        for param in &val.params {
+            self.declare_variable(&param)?;
+        }
+
+        val.body.accept(self)?;
+        
+        self.curr_fn.chunks.push(OpCode::NilVal);
+        self.curr_fn.chunks.push(OpCode::Return(0));
+
+        self.end_scope();
+        // original new func
+        new_func = std::mem::replace(&mut self.curr_fn, new_func);
+        println!("fn: {:?}", new_func);
+        // self.declare_variable(&val.name)?;
+        // if self.curr_fn.scope_depth > 0 {return Ok(())}
+        
+        let x = self.add_const(Object::Str(val.name.lexeme.clone()));
+        let y = self.add_const(Object::Function(new_func));
+        self.curr_fn.chunks.push(OpCode::Constant(0, y));
+        self.curr_fn.chunks.push(OpCode::DefineGlobal(val.name.line_no, x));
+
+        Ok(())
     }
 
     fn visit_return_stmt(&mut self, val: &Return) -> Result<(), LoxError> {
-        todo!();
+        if let Some(vl) = &val.value {
+            vl.accept(self)?;
+            self.curr_fn.chunks.push(OpCode::Return(0));
+        } else {
+            self.curr_fn.chunks.push(OpCode::NilVal);
+            self.curr_fn.chunks.push(OpCode::Return(0));
+        }
+        Ok(())
     }
 
     fn visit_class_stmt(&mut self, val: &Class) -> Result<(), LoxError> {

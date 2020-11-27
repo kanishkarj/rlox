@@ -1,0 +1,20 @@
+2020.10.27 09:48:20 INFO  started: Metals version 0.9.4 in workspace '/mnt/f/lox' for client vscode.
+2020.10.27 09:48:32 INFO  time: initialize in 12s
+2020.10.27 09:48:47 WARN  no build tool detected in workspace '/mnt/f/lox'. The most common cause for this problem is that the editor was opened in the wrong working directory, for example if you use sbt then the workspace directory should contain build.sbt. 
+2020.10.27 09:53:56 INFO  shutting down Metals
+2020.10.29 09:48:19 INFO  started: Metals version 0.9.4 in workspace '/mnt/f/lox' for client vscode.
+2020.10.29 09:48:23 INFO  time: initialize in 4.12s
+2020.10.29 09:48:28 WARN  no build tool detected in workspace '/mnt/f/lox'. The most common cause for this problem is that the editor was opened in the wrong working directory, for example if you use sbt then the workspace directory should contain build.sbt. 
+2020.11.06 09:35:02 INFO  started: Metals version 0.9.4 in workspace '/mnt/f/lox' for client vscode.
+2020.11.06 09:35:04 INFO  time: initialize in 2.64s
+2020.11.06 09:35:10 WARN  no build tool detected in workspace '/mnt/f/lox'. The most common cause for this problem is that the editor was opened in the wrong working directory, for example if you use sbt then the workspace directory should contain build.sbt. 
+2020.11.17 09:36:24 INFO  Started: Metals version 0.9.5 in workspace '/mnt/f/lox' for client vscode.
+2020.11.17 09:36:30 INFO  time: initialize in 6.08s
+2020.11.17 09:36:37 WARN  Build server is not auto-connectable.
+2020.11.17 09:36:37 WARN  no build tool detected in workspace '/mnt/f/lox'. The most common cause for this problem is that the editor was opened in the wrong working directory, for example if you use sbt then the workspace directory should contain build.sbt. 
+2020.11.17 20:11:53 INFO  shutting down Metals
+2020.11.23 04:29:14 INFO  Started: Metals version 0.9.5 in workspace '/mnt/f/lox' for client vscode.
+2020.11.23 04:29:19 INFO  time: initialize in 6.01s
+2020.11.23 04:29:25 WARN  Build server is not auto-connectable.
+2020.11.23 04:29:25 WARN  no build tool detected in workspace '/mnt/f/lox'. The most common cause for this problem is that the editor was opened in the wrong working directory, for example if you use sbt then the workspace directory should contain build.sbt. 
+2020.11.23 13:05:19 INFO  shutting down Metals
