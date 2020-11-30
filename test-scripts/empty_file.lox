@@ -35,9 +35,9 @@
 
 // areWeHavingItYet();
 
-fun add(a, b) {
-    return a + b;
-}
+// fun add(a, b) {
+//     return a + b;
+// }
 
 // {{{
 //     var t = add(4, 5);
@@ -59,7 +59,44 @@ fun add(a, b) {
 //   return fib(n - 2) + fib(n - 1);
 // }
 
-// print fib(9);
+// print fib(3);
 
-print clock();
-print native_add(2, 3);
+// print clock();
+// print native_add(2, 3);
+
+
+fun outer() {
+  var t;
+  {
+    var y = 5;
+    fun inner() {
+      y = y + 1;
+      print y;
+    }
+    inner();
+    t = inner;
+  }
+  return t;
+}
+var x = outer();
+x();
+
+// fun outer() {
+//   var x = "value";
+//   fun middle() {
+//     fun inner() {
+//       print x;
+//     }
+
+//     print "create inner closure";
+//     return inner;
+//   }
+
+//   print "return from outer";
+//   return middle;
+// }
+
+// var mid = outer();
+// var in = mid();
+// in();
+// print in;

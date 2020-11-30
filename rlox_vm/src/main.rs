@@ -2,6 +2,7 @@ mod chunk;
 mod commons;
 mod debug;
 mod compiler;
+mod resolver;
 
 use chunk::{OpCode, VM};
 use debug::disassemble_chunk;

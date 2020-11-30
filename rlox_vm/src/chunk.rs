@@ -1,4 +1,6 @@
 
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::SystemTime;
 use std::fmt::Error;
 use std::fmt::Formatter;
@@ -20,6 +22,7 @@ type NativeFn = fn(args: Vec<Object>) -> Object;
  * make stack a static array, it will help keep stack clean when returning from functions.
  * object pooling
  * consider ecs.
+ * in all vecs assign a decently large capacity
 */
 
 #[derive(Debug, Clone)]
@@ -30,6 +33,13 @@ pub enum Object {
     Nil,
     Function(FuncSpec),
     NativeFunction(NativeFn),
+    Closure(Rc<FuncSpec>),
+}
+
+#[derive(Debug, Clone)]
+pub enum UpValue{
+    Open(usize),
+    Closed(Object)
 }
 
 impl From<Literal> for Object {
@@ -69,6 +79,7 @@ impl Display for Object {
             Object::Nil => writer.write_str("Nil"),
             Object::Function(val) => writer.write_fmt(format_args!("Function<{:?}>", val.name)),
             Object::NativeFunction(_) => writer.write_fmt(format_args!("NativeFunction<>")),
+            Object::Closure(_) => writer.write_fmt(format_args!("Closure<>")),
         }
     }
 }
@@ -183,6 +194,7 @@ impl Eq for Object {}
 pub struct Local {
     pub name: Token,
     pub depth: i32,
+    pub is_closed: bool,
 }
 #[derive(Debug, Clone)]
 pub struct FuncSpec {
@@ -192,13 +204,35 @@ pub struct FuncSpec {
     pub fn_type: FunctionType,
     pub locals: Vec<Local>,
     pub scope_depth: i32,
+    // index, isLocal
+    pub upvalues: Vec<(usize, bool)>,
+    pub upvalues_ref: RefCell<Vec<Rc<UpValue>>>,
 }
 
 impl FuncSpec{ 
     pub fn new(arity: u32, name: Option<String>, fn_type: FunctionType) -> Self {
         FuncSpec {
-            arity, chunks: vec![], name, fn_type, locals: vec![], scope_depth: 0
+            arity, chunks: vec![], name, fn_type, locals: vec![], scope_depth: 0, upvalues: vec![], upvalues_ref: RefCell::new(vec![])
         }
+    }
+
+    pub fn resolve_local(&mut self, token: &Token) -> i32 {
+        for i in (0..self.locals.len()).rev() {
+            if self.locals[i].name.lexeme == token.lexeme {
+                return i as i32;
+            }
+        }
+        return -1;
+    }
+
+    pub fn add_upvalue(&mut self, index:usize, is_local: bool) -> usize {
+        for i in 0..self.upvalues.len() {
+            if self.upvalues[i] == (index, is_local) {
+                return i;
+            }
+        }
+        self.upvalues.push((index, is_local));
+        self.upvalues.len() - 1
     }
 }
 
@@ -246,18 +280,24 @@ pub enum OpCode {
     DefineGlobal(u32, usize),
     GetGlobal(u32, usize),
     SetGlobal(u32, usize),
+    
     GetLocal(u32, usize),
     SetLocal(u32, usize),
+    
+    GetUpvalue(u32, usize),
+    SetUpvalue(u32, usize),
 
     //Control Flow
     JumpIfFalse(u32, usize),
     Jump(u32, usize),
 
     //Fn
-    FnCall(u32, usize),
+    Call(u32, usize),
+    Closure(u32, usize),
 
     //Weird
     StackPop,
+    CloseUpvalue,
     NilVal,
     NoOp,
 }
@@ -292,13 +332,13 @@ impl Display for PrintVec {
 }
 
 struct CallFrame {
-    func: FuncSpec,
+    func: Rc<FuncSpec>,
     ip: usize,
     slot: usize
 }
 
 impl CallFrame {
-    pub fn new(func: FuncSpec, ip: usize, slot: usize) -> Self {
+    pub fn new(func: Rc<FuncSpec>, ip: usize, slot: usize) -> Self {
         CallFrame {
             func,
             ip,
@@ -313,7 +353,8 @@ pub struct VM {
     constant_pool: Vec<Object>,
     stack: Vec<Object>,
     sp: usize,
-    globals: HashMap<String, Object>
+    globals: HashMap<String, Object>,
+    open_upvalues: RefCell<Vec<Rc<UpValue>>>
 }
 
 impl VM {
@@ -323,7 +364,8 @@ impl VM {
             stack: vec![],
             sp:0,
             globals: HashMap::new(),
-            frames: vec![CallFrame::new(func,0,0)]
+            frames: vec![CallFrame::new(Rc::new(func),0,0)],
+            open_upvalues: RefCell::new(vec![])
         };
 
         vm.define_native_fn("clock", |_| {
@@ -336,32 +378,6 @@ impl VM {
         });
 
         vm
-    }
-
-    pub fn push_inst(&mut self, op: OpCode) -> usize {
-        self.frames.last_mut().unwrap().func.chunks.push(op);
-        self.len_inst() - 1
-    }
-    
-    pub fn push_const(&mut self, val: Object) -> usize {
-        self.constant_pool.push(val);
-        self.len_const() - 1
-    }
-
-    pub fn len_inst(&self) -> usize {
-        self.frames.last().unwrap().func.chunks.len()
-    }
-
-    pub fn len_const(&self) -> usize {
-        self.constant_pool.len()
-    }
-    
-    pub fn get_inst(&self, offset: usize) -> Option<&OpCode> {
-        self.frames.last().unwrap().func.chunks.get(offset)
-    }
-    
-    pub fn get_const(&self, pos: usize) -> Option<&Object> {
-        self.constant_pool.get(pos)
     }
 
     pub fn define_native_fn<S: AsRef<str>>(&mut self, name: S, fn_def: NativeFn) {
@@ -419,7 +435,6 @@ impl VM {
                 BoolAnd(_) => {todo!();},
                 NilVal => {self.push_stack(Object::Nil)},
                 Print(_) => {
-                    // println!("stack {:?}", self.stack);
 
                     let x = self.pop_stack().unwrap();
                     println!("[print] {}", x);
@@ -460,6 +475,38 @@ impl VM {
                         println!("err sl");
                     }
                 }
+                SetUpvalue(_, pos) => {
+                    if let Some(val) = self.stack.last() {
+                        // self.stack[self.frames.last_mut().unwrap().slot + pos] = val.clone();
+                        use std::borrow::Borrow;
+                        match self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone().borrow() {
+                            UpValue::Open(up_pos) => {
+                                self.stack[*up_pos] = val.clone();
+                            },
+                            UpValue::Closed(_) => {
+                                self.frames.last().unwrap().func.upvalues_ref.borrow_mut()[pos] = Rc::new(UpValue::Closed(val.clone()));
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        println!("err sul");
+                    } 
+                }
+                GetUpvalue(_, pos) => {
+                    use std::borrow::Borrow; 
+                    println!("stack: {}", PrintVec(self.stack.clone()));
+                    // let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone().borrow();
+                    // let x = &*x.get(pos).unwrap().borrow();
+                    match self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(pos).unwrap().clone().borrow() {
+                        UpValue::Open(up_pos) => {
+                            self.push_stack(self.stack[*up_pos].clone());
+                        },
+                        UpValue::Closed(val) => {
+                            self.push_stack(val.clone());
+                        }
+                        _ => {}
+                    }
+                }
                 JumpIfFalse(_, offset) => {
                     if let Some(Object::Bool(false)) = self.stack.last() {
                         self.frames.last_mut().unwrap().ip = offset;
@@ -472,12 +519,12 @@ impl VM {
                 Jump(_, offset) => {
                     self.frames.last_mut().unwrap().ip = offset;
                 }
-                FnCall(_, args_count) => {
+                Call(_, args_count) => {
                     // TODO: args count check
                     let stack_len = self.stack.len()-args_count;
                     // let frame = self.frames.last().unwrap();
-                    if let Object::Function(func) = &self.stack[stack_len - 1] {
-                        self.frames.push(CallFrame::new(func.clone(),0,stack_len));
+                    if let Object::Closure(func) = &self.stack[stack_len - 1] {
+                        self.frames.push(CallFrame::new(Rc::clone(func),0,stack_len));
                     } else if let Object::NativeFunction(func) = self.stack[stack_len - 1].clone() {
                         // TODO: impl native fn calls.
                         let ret_val = func(self.stack[stack_len..(stack_len+args_count)].to_vec());
@@ -491,18 +538,47 @@ impl VM {
                         println!("err fnc: {:?}", self.stack.last());
                     }
                 }
+                Closure(_, pos) => {
+                    if let Object::Closure(func) = self.constant_pool[pos].clone() {
+                        for up_val in func.upvalues.iter() {
+                            let (index, is_local) = &up_val;
+                            if *is_local {
+                                // println!("{:?} {:?}", func.name, self.frames.last().unwrap().slot + index);
+                                // check first if an upvalue thing exists already for this particular local. if yes, don't add the following.
+                                func.upvalues_ref.borrow_mut().push(self.capture_upvalue(self.frames.last().unwrap().slot + index));
+                            } else {
+                                func.upvalues_ref.borrow_mut().push(self.frames.last().unwrap().func.upvalues_ref.borrow().get(*index).unwrap().clone());
+                            }
+                        }
+                        self.push_stack(Object::Closure(func));
+                    }
+                }
                 Return(_) => {
                     // println!("stack {:?}", self.stack);
                     //TODO: use slots here
                     let val = self.pop_stack().unwrap();
-                    while self.stack.len() >= self.frames.last().unwrap().slot {
-                        self.stack.pop();
-                    }
+                    // TODO: static size stacks, we can just change index instead of actually popping
+                    // while self.stack.len() >= self.frames.last().unwrap().slot {
+                    //     self.stack.pop();
+                    // }
                     self.frames.pop();
                     self.push_stack(val);
                 },
                 NoOp => {
 
+                },
+                CloseUpvalue => {
+                    use std::borrow::Borrow; 
+                    let ln = self.frames.last().unwrap().func.upvalues_ref.borrow().len();
+                    for i in 0..ln {
+                        let top = self.pop_stack().unwrap();
+                        match self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(i).unwrap().clone().borrow() {
+                            UpValue::Open(up_pos) => {
+                                self.frames.last().unwrap().func.upvalues_ref.clone().borrow_mut()[i] = Rc::new(UpValue::Closed(top))
+                            },
+                            _ => {}
+                        }
+                    }
                 }
             };
         }
@@ -523,5 +599,17 @@ impl VM {
             // println!("[pop] {:?}", x);
             return x;
         }
+    }
+
+    pub fn capture_upvalue(&self, pos: usize) -> Rc<UpValue> {
+        use std::borrow::Borrow;
+        for val in self.open_upvalues.borrow().iter() {
+            if let UpValue::Open(pos) = *val.borrow() {
+                return Rc::clone(val)
+            }
+        }
+        let x = Rc::new(UpValue::Open(pos));
+        self.open_upvalues.borrow_mut().push(Rc::clone(&x));
+        x
     }
 }
