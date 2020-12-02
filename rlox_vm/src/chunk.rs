@@ -31,6 +31,7 @@ pub enum Object {
     Num(f64),
     Bool(bool),
     Nil,
+    // TODO: non closures can be made functions instead of closures
     Function(FuncSpec),
     NativeFunction(NativeFn),
     Closure(Rc<FuncSpec>),
@@ -79,7 +80,7 @@ impl Display for Object {
             Object::Nil => writer.write_str("Nil"),
             Object::Function(val) => writer.write_fmt(format_args!("Function<{:?}>", val.name)),
             Object::NativeFunction(_) => writer.write_fmt(format_args!("NativeFunction<>")),
-            Object::Closure(_) => writer.write_fmt(format_args!("Closure<>")),
+            Object::Closure(val) => writer.write_fmt(format_args!("Closure<{:?}>", val.name)),
         }
     }
 }
@@ -206,7 +207,7 @@ pub struct FuncSpec {
     pub scope_depth: i32,
     // index, isLocal
     pub upvalues: Vec<(usize, bool)>,
-    pub upvalues_ref: RefCell<Vec<Rc<UpValue>>>,
+    pub upvalues_ref: RefCell<Vec<Rc<RefCell<UpValue>>>>,
 }
 
 impl FuncSpec{ 
@@ -305,7 +306,8 @@ pub enum OpCode {
 macro_rules! binary_op {
     ($self:ident, $op:ident) => {
         {
-               let b = $self.pop_stack().unwrap(); 
+                    // println!("stack after: {}", PrintVec($self.stack.clone()));
+                    let b = $self.pop_stack().unwrap(); 
                let a = $self.pop_stack().unwrap();
             //    println!("operands: {} {}", a , b);
                let x = a.$op(&b,0).unwrap();
@@ -354,7 +356,7 @@ pub struct VM {
     stack: Vec<Object>,
     sp: usize,
     globals: HashMap<String, Object>,
-    open_upvalues: RefCell<Vec<Rc<UpValue>>>
+    open_upvalues: RefCell<Vec<Rc<RefCell<UpValue>>>>
 }
 
 impl VM {
@@ -477,14 +479,13 @@ impl VM {
                 }
                 SetUpvalue(_, pos) => {
                     if let Some(val) = self.stack.last() {
-                        // self.stack[self.frames.last_mut().unwrap().slot + pos] = val.clone();
-                        use std::borrow::Borrow;
-                        match self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone().borrow() {
+                        let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().borrow().clone();
+                        match x {
                             UpValue::Open(up_pos) => {
-                                self.stack[*up_pos] = val.clone();
+                                self.stack[up_pos] = val.clone();
                             },
                             UpValue::Closed(_) => {
-                                self.frames.last().unwrap().func.upvalues_ref.borrow_mut()[pos] = Rc::new(UpValue::Closed(val.clone()));
+                                self.frames.last().unwrap().func.upvalues_ref.borrow_mut()[pos] = Rc::new(RefCell::new(UpValue::Closed(val.clone())));
                             }
                             _ => {}
                         }
@@ -493,15 +494,17 @@ impl VM {
                     } 
                 }
                 GetUpvalue(_, pos) => {
-                    use std::borrow::Borrow; 
-                    println!("stack: {}", PrintVec(self.stack.clone()));
+                    // use std::borrow::Borrow; 
+                    // println!("stack: {}", PrintVec(self.stack.clone()));
                     // let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone().borrow();
                     // let x = &*x.get(pos).unwrap().borrow();
-                    match self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(pos).unwrap().clone().borrow() {
+                    match &*self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(pos).unwrap().clone().borrow() {
                         UpValue::Open(up_pos) => {
+                            // println!("upping {:?}", up_pos);
                             self.push_stack(self.stack[*up_pos].clone());
                         },
                         UpValue::Closed(val) => {
+                            // println!("upping {}", val);
                             self.push_stack(val.clone());
                         }
                         _ => {}
@@ -525,6 +528,7 @@ impl VM {
                     // let frame = self.frames.last().unwrap();
                     if let Object::Closure(func) = &self.stack[stack_len - 1] {
                         self.frames.push(CallFrame::new(Rc::clone(func),0,stack_len));
+                    // println!("stack after: {:?}", func.chunks);
                     } else if let Object::NativeFunction(func) = self.stack[stack_len - 1].clone() {
                         // TODO: impl native fn calls.
                         let ret_val = func(self.stack[stack_len..(stack_len+args_count)].to_vec());
@@ -542,6 +546,7 @@ impl VM {
                     if let Object::Closure(func) = self.constant_pool[pos].clone() {
                         for up_val in func.upvalues.iter() {
                             let (index, is_local) = &up_val;
+                            // println!("{:?} {} {}", func.name, self.stack[self.frames.last().unwrap().slot + index], is_local);
                             if *is_local {
                                 // println!("{:?} {:?}", func.name, self.frames.last().unwrap().slot + index);
                                 // check first if an upvalue thing exists already for this particular local. if yes, don't add the following.
@@ -554,13 +559,26 @@ impl VM {
                     }
                 }
                 Return(_) => {
-                    // println!("stack {:?}", self.stack);
+                    // println!("upvals: {:?}", self.open_upvalues);
                     //TODO: use slots here
                     let val = self.pop_stack().unwrap();
                     // TODO: static size stacks, we can just change index instead of actually popping
-                    // while self.stack.len() >= self.frames.last().unwrap().slot {
-                    //     self.stack.pop();
-                    // }
+                    let frame_base = self.frames.last().unwrap().slot;
+                    // println!("stack before: {} {}", PrintVec(self.stack.clone()), frame_base);
+                    let mut x = 0;
+                    while self.stack.len() > frame_base {
+                        let i = self.stack.len();
+                        // println!("ret Pop: {} {}", self.stack.last().unwrap(), i - frame_base);
+                        self.close_value(i - frame_base);
+                        // if self.frames.last().unwrap().func.locals[i-frame_base].is_closed {
+                        // }
+                        x += 1;
+                        self.pop_stack();
+                    }
+                    
+                    //removing the function object
+                    self.pop_stack();
+
                     self.frames.pop();
                     self.push_stack(val);
                 },
@@ -568,13 +586,12 @@ impl VM {
 
                 },
                 CloseUpvalue => {
-                    use std::borrow::Borrow; 
                     let ln = self.frames.last().unwrap().func.upvalues_ref.borrow().len();
-                    for i in 0..ln {
+                    for i in (0..ln).rev() {
                         let top = self.pop_stack().unwrap();
-                        match self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(i).unwrap().clone().borrow() {
+                        match &*self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(i).unwrap().clone().borrow() {
                             UpValue::Open(up_pos) => {
-                                self.frames.last().unwrap().func.upvalues_ref.clone().borrow_mut()[i] = Rc::new(UpValue::Closed(top))
+                                self.frames.last().unwrap().func.upvalues_ref.clone().borrow_mut()[i] = Rc::new(RefCell::new(UpValue::Closed(top)))
                             },
                             _ => {}
                         }
@@ -584,9 +601,27 @@ impl VM {
         }
     }
 
+    fn close_value(&mut self, ind: usize) {
+        let ln = self.open_upvalues.borrow().len();
+        for i in (0..ln).rev() {
+            let top = self.stack.last().unwrap().clone();
+            let mut up_pos = -1;
+
+            match &*self.open_upvalues.clone().borrow().get(i).unwrap().clone().borrow() {
+                UpValue::Open(tmp) => {
+                    up_pos = *tmp as i32;
+                },
+                _ => {}
+            }
+            if up_pos == ind as i32 {
+                self.open_upvalues.clone().borrow().get(i).unwrap().replace(UpValue::Closed(top));   
+                // self.open_upvalues.clone().borrow_mut().remove(i);
+            }
+        }
+    }
+
     pub fn push_stack(&mut self, val: Object) {
         self.sp +=1;
-        // println!("[push] {:?}", val);
         self.stack.push(val);
     }
 
@@ -596,19 +631,20 @@ impl VM {
         } else {
             self.sp -= 1;
             let x = self.stack.pop().clone();
-            // println!("[pop] {:?}", x);
             return x;
         }
     }
 
-    pub fn capture_upvalue(&self, pos: usize) -> Rc<UpValue> {
-        use std::borrow::Borrow;
+    pub fn capture_upvalue(&self, pos: usize) -> Rc<RefCell<UpValue>> {
+        // use std::borrow::Borrow;
         for val in self.open_upvalues.borrow().iter() {
-            if let UpValue::Open(pos) = *val.borrow() {
-                return Rc::clone(val)
+            if let UpValue::Open(pos1) = &*val.borrow() {
+                if *pos1 == pos {
+                    return Rc::clone(val)
+                }
             }
         }
-        let x = Rc::new(UpValue::Open(pos));
+        let x = Rc::new(RefCell::new(UpValue::Open(pos)));
         self.open_upvalues.borrow_mut().push(Rc::clone(&x));
         x
     }

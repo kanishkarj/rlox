@@ -68,11 +68,18 @@
 fun outer() {
   var t;
   {
+    var z = 10;
     var y = 5;
+    var x = 1;
     fun inner() {
+      x = x + 1;
       y = y + 1;
+      z = z + 1;
+      print x;
       print y;
+      print z;
     }
+    inner();
     inner();
     t = inner;
   }
@@ -80,23 +87,23 @@ fun outer() {
 }
 var x = outer();
 x();
+x();
 
-// fun outer() {
-//   var x = "value";
-//   fun middle() {
-//     fun inner() {
-//       print x;
-//     }
+fun outer() {
+  var x = "value";
+  fun middle() {
+    fun inner() {
+      print x;
+    }
 
-//     print "create inner closure";
-//     return inner;
-//   }
+    print "create inner closure";
+    return inner;
+  }
 
-//   print "return from outer";
-//   return middle;
-// }
+  print "return from outer";
+  return middle;
+}
 
-// var mid = outer();
-// var in = mid();
-// in();
-// print in;
+var mid = outer();
+var in = mid();
+in();

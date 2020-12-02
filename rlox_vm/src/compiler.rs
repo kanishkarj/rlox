@@ -381,6 +381,7 @@ impl Visitor<()> for Compiler {
         self.curr_fn_mut().chunks.push(OpCode::Constant(0, y));
         self.curr_fn_mut().chunks.push(OpCode::Closure(val.name.line_no, y));
         self.curr_fn_mut().chunks.push(OpCode::DefineGlobal(val.name.line_no, x));
+        self.curr_fn_mut().chunks.push(OpCode::StackPop);
 
         Ok(())
     }
