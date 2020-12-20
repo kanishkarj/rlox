@@ -28,6 +28,7 @@ pub trait VisitorMut<R> {
     fn visit_function_stmt(&mut self, expr: &mut Function) -> Result<R, LoxError>;
     fn visit_return_stmt(&mut self, expr: &mut Return) -> Result<R, LoxError>;
     fn visit_class_stmt(&mut self, expr: &mut Class) -> Result<R, LoxError>;
+    fn visit_stack_trace_stmt(&mut self) -> Result<R, LoxError>;
 }
 
 pub trait VisitorMutAcceptor<T>: Sized {
@@ -71,6 +72,7 @@ impl<T> VisitorMutAcceptor<T> for Stmt {
                 let x = vis.visit_class_stmt(v);
                 x
             }
+            Stmt::StackTrace => vis.visit_stack_trace_stmt()
         }
     }
 }
@@ -113,6 +115,7 @@ pub trait Visitor<R> {
     fn visit_function_stmt(&mut self, expr: &Function) -> Result<R, LoxError>;
     fn visit_return_stmt(&mut self, expr: &Return) -> Result<R, LoxError>;
     fn visit_class_stmt(&mut self, expr: &Class) -> Result<R, LoxError>;
+    fn visit_stack_trace_stmt(&mut self) -> Result<R, LoxError>;
 }
 
 pub trait VisAcceptor<T>: Sized {
@@ -153,6 +156,7 @@ impl<T> VisAcceptor<T> for Stmt {
             Stmt::Function(v) => vis.visit_function_stmt(v),
             Stmt::Return(v) => vis.visit_return_stmt(v),
             Stmt::Class(v) => vis.visit_class_stmt(v),
+            Stmt::StackTrace => vis.visit_stack_trace_stmt()
         }
     }
 }

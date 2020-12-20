@@ -327,4 +327,8 @@ impl VisitorMut<()> for Resolver {
         self.curr_class = curr_class;
         Ok(())
     }
+
+    fn visit_stack_trace_stmt(&mut self) -> Result<(), LoxError> {
+        todo!()
+    }
 }

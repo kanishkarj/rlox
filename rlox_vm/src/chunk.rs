@@ -7,10 +7,12 @@ use std::fmt::Formatter;
 use rlox_core::error::LoxError;
 use rlox_core::frontend::definitions::literal::Literal;
 use rlox_core::frontend::definitions::token::Token;
-use crate::debug::disassemble_inst;
+// use crate::debug::disassemble_inst;
 use std::collections::HashMap;
 use std::ops::{Add,Mul,Div,Sub};
 use std::fmt::Display;
+use crate::system_calls::SystemCalls;
+
 const MAX_STACK: usize = 1000;
 
 type NativeFn = fn(args: Vec<Object>) -> Object;
@@ -34,13 +36,27 @@ pub enum Object {
     // TODO: non closures can be made functions instead of closures
     Function(FuncSpec),
     NativeFunction(NativeFn),
-    Closure(Rc<FuncSpec>),
+    Closure(Box<FuncSpec>),
 }
 
 #[derive(Debug, Clone)]
 pub enum UpValue{
     Open(usize),
     Closed(Object)
+}
+#[derive(Debug, Clone)]
+pub struct UpValueWrap(pub RefCell<UpValue>);
+
+impl UpValueWrap {
+    pub fn new (upval: UpValue) -> Self {
+        UpValueWrap{0:RefCell::new(upval)}
+    }
+    pub fn update (&self, upval: UpValue){
+       self.0.replace(upval);
+    }
+    pub fn get(&self) -> UpValue {
+        self.0.borrow().clone()
+    }
 }
 
 impl From<Literal> for Object {
@@ -188,6 +204,55 @@ impl Object {
             ))}
         }
     }
+    pub fn bool_or(&self, other: &Self, line_no: u32) -> Result<Self, LoxError>{
+        use Object::*;
+        match (self, other) {
+            (Bool(ref l), Bool(ref r)) => Ok(Object::Bool(*l || *r)),
+            // TODO: import error def
+            _ => {Err(LoxError::RuntimeError(
+                other.to_string(),
+                line_no,
+                "Operands not Boolean".to_string(),
+            ))}
+        }
+    }
+    pub fn bool_and(&self, other: &Self, line_no: u32) -> Result<Self, LoxError>{
+        use Object::*;
+        match (self, other) {
+            (Bool(ref l), Bool(ref r)) => Ok(Object::Bool(*l && *r)),
+            // TODO: import error def
+            _ => {Err(LoxError::RuntimeError(
+                other.to_string(),
+                line_no,
+                "Operands not Boolean".to_string(),
+            ))}
+        }
+    }
+    pub fn neg(&self, line_no: u32) -> Result<Self, LoxError>{
+        use Object::*;
+        match (self) {
+            (Num(ref l)) => Ok(Object::Num(- *l)),
+            // TODO: import error def
+            _ => {Err(LoxError::RuntimeError(
+                self.to_string(),
+                line_no,
+                "Operands not Num".to_string(),
+            ))}
+        }
+    }
+    
+    pub fn not(&self, line_no: u32) -> Result<Self, LoxError>{
+        use Object::*;
+        match (self) {
+            (Bool(ref l)) => Ok(Object::Bool(! *l)),
+            // TODO: import error def
+            _ => {Err(LoxError::RuntimeError(
+                self.to_string(),
+                line_no,
+                "Operands not Boolean".to_string(),
+            ))}
+        }
+    }
 }
 impl Eq for Object {}
 
@@ -207,7 +272,7 @@ pub struct FuncSpec {
     pub scope_depth: i32,
     // index, isLocal
     pub upvalues: Vec<(usize, bool)>,
-    pub upvalues_ref: RefCell<Vec<Rc<RefCell<UpValue>>>>,
+    pub upvalues_ref: RefCell<Vec<Rc<UpValueWrap>>>,
 }
 
 impl FuncSpec{ 
@@ -255,9 +320,11 @@ pub enum VmErr {
 pub enum OpCode {
     Return(u32),
     Exit(u32),
-    Constant(u32, usize),
+    Constant(usize),
     // Unary
     Negate(u32),
+    Not(u32),
+
     //Binary
     Add(u32),
     Divide(u32),
@@ -296,22 +363,20 @@ pub enum OpCode {
     Call(u32, usize),
     Closure(u32, usize),
 
-    //Weird
+    //Helpers
     StackPop,
     CloseUpvalue,
     NilVal,
     NoOp,
+    PrintStackTrace,
 }
 
 macro_rules! binary_op {
-    ($self:ident, $op:ident) => {
+    ($self:ident, $op:ident, $line_no:ident) => {
         {
-                    // println!("stack after: {}", PrintVec($self.stack.clone()));
-                    let b = $self.pop_stack().unwrap(); 
+                let b = $self.pop_stack().unwrap(); 
                let a = $self.pop_stack().unwrap();
-            //    println!("operands: {} {}", a , b);
-               let x = a.$op(&b,0).unwrap();
-            //    println!("op: {}", x);
+               let x = a.$op(&b,$line_no)?;
                $self.push_stack(x);
         }
     }
@@ -321,6 +386,10 @@ struct PrintVec(Vec<Object>);
 
 impl Display for PrintVec {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        if(self.0.len() < 1) {
+            return Ok(())
+        }
+        
         let mut comma_separated = String::new();
 
         for num in &self.0[0..self.0.len() - 1] {
@@ -334,13 +403,13 @@ impl Display for PrintVec {
 }
 
 struct CallFrame {
-    func: Rc<FuncSpec>,
+    func: Box<FuncSpec>,
     ip: usize,
     slot: usize
 }
 
 impl CallFrame {
-    pub fn new(func: Rc<FuncSpec>, ip: usize, slot: usize) -> Self {
+    pub fn new(func: Box<FuncSpec>, ip: usize, slot: usize) -> Self {
         CallFrame {
             func,
             ip,
@@ -349,25 +418,27 @@ impl CallFrame {
     }
 }
 
-pub struct VM {
+pub struct VM<T: SystemCalls> {
     frames: Vec<CallFrame>,
 
     constant_pool: Vec<Object>,
     stack: Vec<Object>,
     sp: usize,
     globals: HashMap<String, Object>,
-    open_upvalues: RefCell<Vec<Rc<RefCell<UpValue>>>>
+    open_upvalues: RefCell<Vec<Rc<UpValueWrap>>>,
+    sys_interface: T
 }
 
-impl VM {
-    pub fn new(constant_pool: Vec<Object>, func: FuncSpec) -> Self {
+impl<T: SystemCalls> VM<T> {
+    pub fn new(sys_interface: T, constant_pool: Vec<Object>, func: FuncSpec) -> Self {
         let mut vm = VM {
             constant_pool,
             stack: vec![],
             sp:0,
             globals: HashMap::new(),
-            frames: vec![CallFrame::new(Rc::new(func),0,0)],
-            open_upvalues: RefCell::new(vec![])
+            frames: vec![CallFrame::new(Box::new(func),0,0)],
+            open_upvalues: RefCell::new(vec![]),
+            sys_interface
         };
 
         vm.define_native_fn("clock", |_| {
@@ -388,7 +459,7 @@ impl VM {
 
     //TODO: try prefetching
 //TODO: this whole thing barely does any error handling
-    pub fn run(&mut self, is_debug: bool) -> Result<(), VmErr>{
+    pub fn run(&mut self, is_debug: bool) -> Result<(), LoxError>{
         use OpCode::*;
 
         // let frame = self.frames.last_mut().unwrap();
@@ -398,13 +469,12 @@ impl VM {
             // if is_debug {
             //     disassemble_inst(&self, self.ip);
             // }
-            // println!("stack: {:?}", self.stack);
             let ip = self.frames.last_mut().unwrap().ip;
             self.frames.last_mut().unwrap().ip += 1;
 
             // println!("exec: {:?}", self.frames.last_mut().unwrap().func.chunks[ip]);
             match self.frames.last_mut().unwrap().func.chunks[ip] {
-                Constant(_, pos) => {
+                Constant(pos) => {
                     // println!("const: {:?}", self.constant_pool[pos]);
                 // this will create new copies everytime. think over
                 self.push_stack(self.constant_pool[pos].clone())},
@@ -412,99 +482,109 @@ impl VM {
                     // println!("{:?}", self.stack);
                     return Ok(())
                 },
-                Negate(_) => {
-                    todo!()
+                Negate(line_no) => {
+                    let a = self.pop_stack().unwrap();
+                    self.push_stack(a.neg(line_no)?);
                 },
-                Add(_) => {
-                    binary_op!(self,add)
+                Not(line_no) => {
+                    let a = self.pop_stack().unwrap();
+                    self.push_stack(a.not(line_no)?);
                 },
-                Divide(_) => {
-                    binary_op!(self,div)
+                Add(line_no) => {
+                    binary_op!(self,add,line_no)
                 },
-                Multiply(_) => {
-                    binary_op!(self,mul)
+                Divide(line_no) => {
+                    binary_op!(self,div,line_no)
                 },
-                Subs(_) => {
-                    binary_op!(self,sub)
+                Multiply(line_no) => {
+                    binary_op!(self,mul,line_no)
                 },
-                GreaterThan(_) => {binary_op!(self,gt)},
-                GreaterThanEq(_) => {binary_op!(self,gte)},
-                LesserThan(_) => {binary_op!(self,lt)},
-                LesserThanEq(_) => {binary_op!(self,lte)},
+                Subs(line_no) => {
+                    binary_op!(self,sub,line_no)
+                },
+                GreaterThan(line_no) => {binary_op!(self,gt,line_no)},
+                GreaterThanEq(line_no) => {binary_op!(self,gte,line_no)},
+                LesserThan(line_no) => {binary_op!(self,lt,line_no)},
+                LesserThanEq(line_no) => {binary_op!(self,lte,line_no)},
                 NotEqualTo(_) => {let val = self.pop_stack().unwrap() != self.pop_stack().unwrap(); self.push_stack(Object::Bool(val));},
                 EqualTo(_) => {let val = self.pop_stack().unwrap() == self.pop_stack().unwrap(); self.push_stack(Object::Bool(val));},
-                BoolOr(_) => {todo!();},
-                BoolAnd(_) => {todo!();},
+                BoolOr(line_no) => {binary_op!(self,bool_or,line_no)},
+                BoolAnd(line_no) => {binary_op!(self,bool_and,line_no)},
                 NilVal => {self.push_stack(Object::Nil)},
                 Print(_) => {
-
                     let x = self.pop_stack().unwrap();
-                    println!("[print] {}", x);
+                    self.sys_interface.print(&x);
                 },
                 StackPop => {self.pop_stack();},
-                DefineGlobal(_, pos) => {
+                DefineGlobal(line_no, pos) => {
                     let name = self.constant_pool[pos].to_string();
-                    let val = self.pop_stack().unwrap().clone();
-                    self.globals.insert(name, val);
+                    if let Some(val) = self.pop_stack() {
+                        self.globals.insert(name, val.clone());
+                    } else {
+                        return Err(LoxError::RuntimeError("gg".to_string(),line_no,"".to_string()))
+                    }
                 }
-                GetGlobal(_, pos) => {
+                GetGlobal(line_no, pos) => {
                     //TODO: actually check if it's a string
                     let name = self.constant_pool[pos].to_string();
                     if let Some(val) = self.globals.get(&name) {
                         self.push_stack(val.clone());
                     } else {
-                        println!("errr gg");
+                        return Err(LoxError::RuntimeError("gg".to_string(),line_no,"".to_string()))
                     }
                 }
-                SetGlobal(_, pos) => {
+                SetGlobal(line_no, pos) => {
                     //TODO: actually check if it's a string
                     let name = self.constant_pool[pos].to_string();
-                    let val = self.pop_stack().unwrap().clone();
-                    self.globals.insert(name, val);
+                    if let Some(val) = self.stack.last() {
+                        if self.globals.insert(name, val.clone()).is_none() {
+                            return Err(LoxError::RuntimeError("unknown".to_string(),line_no,"".to_string()))
+                        }
+                    } else {
+                        return Err(LoxError::RuntimeError("gg".to_string(),line_no,"".to_string()))
+                    }
                 }
                 GetLocal(_, pos) => {
-                    // println!("stack: {} | {}", PrintVec(self.stack.clone()), self.frames.last_mut().unwrap().slot + pos);
                     if let Some(val) = self.stack.get(self.frames.last_mut().unwrap().slot + pos) {
                         self.push_stack(val.clone());
                     } else {
-                        println!("er gl");
+                        return Err(LoxError::RuntimeError("gl".to_string(),0,"".to_string()))
                     }
                 }
                 SetLocal(_, pos) => {
                     if let Some(val) = self.stack.last() {
                         self.stack[self.frames.last_mut().unwrap().slot + pos] = val.clone();
                     } else {
-                        println!("err sl");
+                        return Err(LoxError::RuntimeError("sl".to_string(),0,"".to_string()))
                     }
                 }
                 SetUpvalue(_, pos) => {
                     if let Some(val) = self.stack.last() {
-                        let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().borrow().clone();
+                        let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone().get();
                         match x {
                             UpValue::Open(up_pos) => {
                                 self.stack[up_pos] = val.clone();
                             },
                             UpValue::Closed(_) => {
-                                self.frames.last().unwrap().func.upvalues_ref.borrow_mut()[pos] = Rc::new(RefCell::new(UpValue::Closed(val.clone())));
+                                self.frames.last().unwrap().func.upvalues_ref.borrow_mut()[pos].update(UpValue::Closed(val.clone()));
                             }
                             _ => {}
                         }
                     } else {
-                        println!("err sul");
+                        return Err(LoxError::RuntimeError("su".to_string(),0,"".to_string()))
                     } 
                 }
                 GetUpvalue(_, pos) => {
                     // use std::borrow::Borrow; 
-                    // println!("stack: {}", PrintVec(self.stack.clone()));
                     // let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone().borrow();
                     // let x = &*x.get(pos).unwrap().borrow();
-                    match &*self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(pos).unwrap().clone().borrow() {
+                    match self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(pos).unwrap().clone().get() {
                         UpValue::Open(up_pos) => {
-                            // println!("upping {:?}", up_pos);
-                            self.push_stack(self.stack[*up_pos].clone());
+                            // println!("upping Open {:?}", up_pos);
+                            self.push_stack(self.stack[up_pos].clone());
                         },
                         UpValue::Closed(val) => {
-                            // println!("upping {}", val);
+                            // println!("upping Closed {}", val);
                             self.push_stack(val.clone());
                         }
                         _ => {}
@@ -516,7 +596,7 @@ impl VM {
                     } else if let Some(Object::Bool(true)) = self.stack.last() {
                         
                     } else {
-                        println!("err jmp");
+                        return Err(LoxError::RuntimeError("jif".to_string(),0,"".to_string()))
                     }
                 }
                 Jump(_, offset) => {
@@ -527,19 +607,19 @@ impl VM {
                     let stack_len = self.stack.len()-args_count;
                     // let frame = self.frames.last().unwrap();
                     if let Object::Closure(func) = &self.stack[stack_len - 1] {
-                        self.frames.push(CallFrame::new(Rc::clone(func),0,stack_len));
-                    // println!("stack after: {:?}", func.chunks);
+                        self.frames.push(CallFrame::new(func.clone(),0,stack_len));
+                        // println!("upvals {:?}: {:?}", func.name, func.upvalues);
+                        // println!("open upvals {:?}: {:?}", func.name, self.open_upvalues);
                     } else if let Object::NativeFunction(func) = self.stack[stack_len - 1].clone() {
-                        // TODO: impl native fn calls.
                         let ret_val = func(self.stack[stack_len..(stack_len+args_count)].to_vec());
-                        
-                        for _ in 0..(args_count+1) {
+  
+                        for _ in 0..(args_count) {
                             self.stack.pop();
                         }
                         
                         self.stack.push(ret_val);
                     } else {
-                        println!("err fnc: {:?}", self.stack.last());
+                        return Err(LoxError::RuntimeError("c".to_string(),0,"".to_string()))
                     }
                 }
                 Closure(_, pos) => {
@@ -548,10 +628,11 @@ impl VM {
                             let (index, is_local) = &up_val;
                             // println!("{:?} {} {}", func.name, self.stack[self.frames.last().unwrap().slot + index], is_local);
                             if *is_local {
-                                // println!("{:?} {:?}", func.name, self.frames.last().unwrap().slot + index);
+                                // println!("up open {:?} {:?}", func.name, self.frames.last().unwrap().slot + index);
                                 // check first if an upvalue thing exists already for this particular local. if yes, don't add the following.
                                 func.upvalues_ref.borrow_mut().push(self.capture_upvalue(self.frames.last().unwrap().slot + index));
                             } else {
+                                // println!("{:?}", up_val);
                                 func.upvalues_ref.borrow_mut().push(self.frames.last().unwrap().func.upvalues_ref.borrow().get(*index).unwrap().clone());
                             }
                         }
@@ -569,7 +650,7 @@ impl VM {
                     while self.stack.len() > frame_base {
                         let i = self.stack.len();
                         // println!("ret Pop: {} {}", self.stack.last().unwrap(), i - frame_base);
-                        self.close_value(i - frame_base);
+                        self.close_value(i - 1);
                         // if self.frames.last().unwrap().func.locals[i-frame_base].is_closed {
                         // }
                         x += 1;
@@ -586,16 +667,23 @@ impl VM {
 
                 },
                 CloseUpvalue => {
-                    let ln = self.frames.last().unwrap().func.upvalues_ref.borrow().len();
-                    for i in (0..ln).rev() {
-                        let top = self.pop_stack().unwrap();
-                        match &*self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(i).unwrap().clone().borrow() {
-                            UpValue::Open(up_pos) => {
-                                self.frames.last().unwrap().func.upvalues_ref.clone().borrow_mut()[i] = Rc::new(RefCell::new(UpValue::Closed(top)))
-                            },
-                            _ => {}
-                        }
-                    }
+                    // let ln = self.frames.last().unwrap().func.upvalues_ref.borrow().len();
+                    // for i in (0..ln).rev() {
+                    //     let top = self.pop_stack().unwrap();
+                    //     match &*self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(i).unwrap().clone().borrow() {
+                    //         UpValue::Open(up_pos) => {
+                    //             self.frames.last().unwrap().func.upvalues_ref.clone().borrow_mut()[i] = Rc::new(RefCell::new(UpValue::Closed(top)))
+                    //         },
+                    //         _ => {}
+                    //     }
+                    // }
+                    let frame_base = self.frames.last().unwrap().slot;
+                    let i = self.stack.len()-1;
+                    self.close_value(i);
+                    self.pop_stack();
+                },
+                PrintStackTrace => {
+                    println!("stacktrace: {}", PrintVec(self.stack.clone()));
                 }
             };
         }
@@ -606,16 +694,17 @@ impl VM {
         for i in (0..ln).rev() {
             let top = self.stack.last().unwrap().clone();
             let mut up_pos = -1;
-
-            match &*self.open_upvalues.clone().borrow().get(i).unwrap().clone().borrow() {
+            
+            match self.open_upvalues.clone().borrow().get(i).unwrap().clone().get() {
                 UpValue::Open(tmp) => {
-                    up_pos = *tmp as i32;
+                    up_pos = tmp as i32;
                 },
                 _ => {}
             }
             if up_pos == ind as i32 {
-                self.open_upvalues.clone().borrow().get(i).unwrap().replace(UpValue::Closed(top));   
-                // self.open_upvalues.clone().borrow_mut().remove(i);
+                self.open_upvalues.borrow().get(i).unwrap().update(UpValue::Closed(top));
+                // TODO: 
+                self.open_upvalues.borrow_mut().remove(i);
             }
         }
     }
@@ -635,17 +724,18 @@ impl VM {
         }
     }
 
-    pub fn capture_upvalue(&self, pos: usize) -> Rc<RefCell<UpValue>> {
+    pub fn capture_upvalue(&self, pos: usize) -> Rc<UpValueWrap> {
         // use std::borrow::Borrow;
         for val in self.open_upvalues.borrow().iter() {
-            if let UpValue::Open(pos1) = &*val.borrow() {
-                if *pos1 == pos {
+            if let UpValue::Open(pos1) = val.get() {
+                if pos1 == pos {
                     return Rc::clone(val)
                 }
             }
         }
-        let x = Rc::new(RefCell::new(UpValue::Open(pos)));
-        self.open_upvalues.borrow_mut().push(Rc::clone(&x));
+        let x = Rc::new(UpValueWrap::new(UpValue::Open(pos)));
+        let y = Rc::clone(&x);
+        self.open_upvalues.borrow_mut().push(y);
         x
     }
 }

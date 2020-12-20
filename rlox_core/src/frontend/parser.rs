@@ -44,6 +44,9 @@ impl Parser {
         if self.validate(TokenType::VAR) {
             return self.val_declaration();
         }
+        if self.validate(TokenType::STACKTRACE) {
+            return self.stack_trace();
+        }
         return self.statement();
     }
 
@@ -130,6 +133,12 @@ impl Parser {
         Ok(Stmt::Var(Box::new(Var::new(name, initializer))))
     }
 
+
+    fn stack_trace(&mut self) -> Result<Stmt, LoxError> {
+        self.consume(TokenType::SEMICOLON, "Expect ';' after stack trace.".to_string())?;
+        Ok(Stmt::StackTrace)
+    }
+
     fn statement(&mut self) -> Result<Stmt, LoxError> {
         if self.validate(TokenType::PRINT) {
             return self.print_statement();
@@ -195,11 +204,13 @@ impl Parser {
 
     fn print_statement(&mut self) -> Result<Stmt, LoxError> {
         let val = self.expression()?;
+        let token = self.previous().clone();
         self.consume(TokenType::SEMICOLON, "Expect ';' after value.".to_string())?;
-        return Ok(Stmt::Print(Box::new(Print::new(val))));
+        return Ok(Stmt::Print(Box::new(Print::new(val, token))));
     }
 
     fn while_statement(&mut self) -> Result<Stmt, LoxError> {
+        let token = self.previous().clone();
         self.consume(TokenType::LeftParen, "Expect '(' after 'if'.".to_string())?;
         let condition = self.expression()?;
         self.consume(
@@ -208,10 +219,11 @@ impl Parser {
         )?;
 
         let body = self.statement()?;
-        return Ok(Stmt::While(Box::new(While::new(condition, body))));
+        return Ok(Stmt::While(Box::new(While::new(condition, body, token))));
     }
 
     fn for_statement(&mut self) -> Result<Stmt, LoxError> {
+        let token = self.previous().clone();
         self.consume(TokenType::LeftParen, "Expect '(' after 'for'.".to_string())?;
 
         // Initialization
@@ -256,6 +268,7 @@ impl Parser {
         body = Stmt::While(Box::new(While::new(
             condition.unwrap_or(Expr::Literal(Literal::BOOL(true))),
             body,
+            token,
         )));
 
         if let Some(init) = init {
@@ -266,6 +279,7 @@ impl Parser {
     }
 
     fn if_statement(&mut self) -> Result<Stmt, LoxError> {
+        let token = self.previous().clone();
         self.consume(TokenType::LeftParen, "Expect '(' after 'if'.".to_string())?;
         let condition = self.expression()?;
         self.consume(
@@ -279,7 +293,7 @@ impl Parser {
             else_branch = Some(self.statement()?);
         }
         return Ok(Stmt::If(Box::new(If::new(
-            condition, then_branch, else_branch,
+            condition, then_branch, else_branch, token
         ))));
     }
 

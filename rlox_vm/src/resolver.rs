@@ -16,7 +16,7 @@ use rlox_core::frontend::definitions::token::Token;
 
 pub struct Resolver {
     // bool corresponds to if the value has been initialized
-    pub scopes: Vec<HashMap<String, bool>>,
+    pub fn_scopes: Vec<Vec<HashMap<String, bool>>>,
     curr_class: ClassType,
     curr_function: FunctionType,
 }
@@ -24,7 +24,7 @@ pub struct Resolver {
 impl Resolver {
     pub fn new() -> Self {
         Resolver {
-            scopes: vec![],
+            fn_scopes: vec![vec![HashMap::new()]],
             curr_class: ClassType::NONE,
             curr_function: FunctionType::NONE,
         }
@@ -37,48 +37,67 @@ impl Resolver {
         expr.accept(self)
     }
 
-    fn resolve_local(&mut self, name: &mut Token) {
-        for (i, scope) in self.scopes.iter().enumerate().rev() {
-            if scope.contains_key(&name.lexeme) {
-                name.scope = Some(self.scopes.len() - 1 - i);
-                return;
+    fn resolve_local(&mut self, name: &mut Token) -> Result<(), LoxError> {
+        for (i, scopes) in self.fn_scopes.iter().enumerate().rev() {
+            for (_, scope) in scopes.iter().enumerate().rev() {
+                if scope.contains_key(&name.lexeme) {
+                    name.scope = Some(self.fn_scopes.len() - 1 - i);
+                    // println!("resolver {:?} {:?}", name, self.fn_scopes);
+                    return Ok(());
+                }
             }
         }
+        return Err(LoxError::SemanticError(name.lexeme.clone(),name.line_no, String::from("Undefined")));
     }
 
     // not for block scopes only lexical
     fn begin_scope(&mut self) {
-        self.scopes.push(HashMap::new());
+        self.fn_scopes.last_mut().unwrap().push(HashMap::new());
     }
 
     fn end_scope(&mut self) {
-        self.scopes.pop();
+        self.fn_scopes.last_mut().unwrap().pop();
+    }
+
+    fn begin_fn_scope(&mut self) {
+        self.fn_scopes.push(vec![HashMap::new()]);
+        self.begin_scope();
+    }
+
+    fn end_fn_scope(&mut self) {
+        self.end_scope();
+        self.fn_scopes.pop();
     }
 
     fn declare(&mut self, token: &Token) -> Result<(), LoxError> {
-        if let Some(scope) = self.scopes.last_mut() {
-            if scope.insert(token.lexeme.clone(), false).is_some() {
-                return Err(LoxError::RuntimeError(token.lexeme.clone(),token.line_no, String::from("Already exists")));
+        if let Some(scopes) = self.fn_scopes.last_mut() {
+            if let Some(scope) = scopes.last_mut() {
+                if scope.insert(token.lexeme.clone(), false).is_some() {
+                    return Err(LoxError::SemanticError(token.lexeme.clone(),token.line_no, String::from("Already exists")));
+                }
             }
         }
+        //TODO: else err, actually perform this check on every `if let`
         Ok(())
     }
 
     fn define(&mut self, token: &Token) -> Result<(), LoxError> {
-        if let Some(scope) = self.scopes.last_mut() {
-            scope
-                .insert(token.lexeme.clone(), true)
-                .ok_or(LoxError::SemanticError(
-                    token.lexeme.clone(),
-                    token.line_no,
-                    "Declaration without definition".to_string(),
-                ))?;
+        if let Some(scopes) = self.fn_scopes.last_mut() {
+            if let Some(scope) = scopes.last_mut() {
+                scope
+                    .insert(token.lexeme.clone(), true)
+                    .ok_or(LoxError::SemanticError(
+                        token.lexeme.clone(),
+                        token.line_no,
+                        "Declaration without definition".to_string(),
+                    ))?;
+            }
         }
         Ok(())
     }
 
     fn resolve_function(&mut self, func: &mut Function, dec: FunctionType) -> Result<(), LoxError> {
-        self.begin_scope();
+        self.begin_fn_scope();
         let currfn = self.curr_function;
         self.curr_function = dec;
 
@@ -87,13 +106,13 @@ impl Resolver {
             self.define(&param)?;
         }
         self.resolve(&mut func.body)?;
-        self.end_scope();
+        self.end_fn_scope();
         self.curr_function = currfn;
         Ok(())
     }
 
     fn resolve_lambda(&mut self, func: &mut Lambda) -> Result<(), LoxError> {
-        self.begin_scope();
+        self.begin_fn_scope();
         let currfn = self.curr_function;
         self.curr_function = FunctionType::LAMBDA;
 
@@ -102,7 +121,7 @@ impl Resolver {
             self.define(&param)?;
         }
         self.resolve(&mut func.body)?;
-        self.end_scope();
+        self.end_fn_scope();
         self.curr_function = currfn;
         Ok(())
     }
@@ -116,7 +135,8 @@ impl VisitorMut<()> for Resolver {
     }
 
     fn visit_call_expr(&mut self, val: &mut Call) -> Result<(), LoxError> {
-        self.resolve(&mut val.callee)?;
+        // This is so that recursion and stuff works in peace
+        // self.resolve(&mut val.callee)?;
         for arg in &mut val.arguments {
             self.resolve(arg)?;
         }
@@ -167,7 +187,7 @@ impl VisitorMut<()> for Resolver {
                 "Cannot use this outside class.".to_string(),
             ));
         }
-        self.resolve_local(&mut val.keyword);
+        self.resolve_local(&mut val.keyword)?;
         Ok(())
     }
 
@@ -179,7 +199,7 @@ impl VisitorMut<()> for Resolver {
                 "No super class as such.".to_string(),
             ));
         }
-        self.resolve_local(&mut val.keyword);
+        self.resolve_local(&mut val.keyword)?;
         Ok(())
     }
 
@@ -194,16 +214,18 @@ impl VisitorMut<()> for Resolver {
     }
 
     fn visit_variable_stmt(&mut self, val: &mut Variable) -> Result<(), LoxError> {
-        if let Some(scope) = self.scopes.last() {
-            if let Some(false) = scope.get(&val.name.lexeme) {
-                return Err(LoxError::SemanticError(
-                    val.name.lexeme.clone(),
-                    val.name.line_no,
-                    "Cannot read local variable in its own initializer.".to_string(),
-                ));
+        if let Some(scopes) = self.fn_scopes.last_mut() {
+            if let Some(scope) = scopes.last_mut() {
+                if let Some(false) = scope.get(&val.name.lexeme) {
+                    return Err(LoxError::SemanticError(
+                        val.name.lexeme.clone(),
+                        val.name.line_no,
+                        "Cannot read local variable in its own initializer.".to_string(),
+                    ));
+                }
             }
         }
-        self.resolve_local(&mut val.name);
+        self.resolve_local(&mut val.name)?;
         Ok(())
     }
 
@@ -213,20 +235,20 @@ impl VisitorMut<()> for Resolver {
             self.resolve(initl)?;
         }
         self.define(&mut val.name)?;
-        self.resolve_local(&mut val.name);
+        self.resolve_local(&mut val.name)?;
         Ok(())
     }
 
     fn visit_assign_stmt(&mut self, val: &mut Assign) -> Result<(), LoxError> {
         self.resolve(&mut val.value)?;
-        self.resolve_local(&mut val.name);
+        self.resolve_local(&mut val.name)?;
         Ok(())
     }
 
     fn visit_block_stmt(&mut self, val: &mut Block) -> Result<(), LoxError> {
-        // self.begin_scope();
+        self.begin_scope();
         self.resolve(&mut val.statements)?;
-        // self.end_scope();
+        self.end_scope();
         Ok(())
     }
 
@@ -288,7 +310,7 @@ impl VisitorMut<()> for Resolver {
         self.curr_class = ClassType::CLASS;
         self.declare(&val.name)?;
         self.define(&val.name)?;
-        self.resolve_local(&mut val.name);
+        self.resolve_local(&mut val.name)?;
         if let Some(sp_class) = &mut val.superclass {
             if sp_class.name.lexeme == val.name.lexeme {
                 return Err(LoxError::SemanticError(
@@ -301,14 +323,18 @@ impl VisitorMut<()> for Resolver {
             // self.resolve(&mut Expr::Variable(Box::new(_sp_class.clone())))?;
             self.visit_variable_stmt(sp_class)?;
             self.begin_scope();
-            self.scopes
+            self.fn_scopes
+                .last_mut()
+                .unwrap()
                 .last_mut()
                 .unwrap()
                 .insert("super".to_string(), true);
         }
 
         self.begin_scope();
-        self.scopes
+        self.fn_scopes
+            .last_mut()
+            .unwrap()
             .last_mut()
             .unwrap()
             .insert("this".to_string(), true);
@@ -326,6 +352,11 @@ impl VisitorMut<()> for Resolver {
             self.end_scope();
         }
         self.curr_class = curr_class;
+        Ok(())
+    }
+
+    fn visit_stack_trace_stmt(&mut self) -> Result<(), LoxError> {
+        // todo!()
         Ok(())
     }
 }

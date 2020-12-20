@@ -1,13 +1,9 @@
-mod chunk;
-mod commons;
-mod debug;
-mod compiler;
-mod resolver;
 
-use chunk::{OpCode, VM};
-use debug::disassemble_chunk;
-use crate::compiler::run_file;
+use rlox_vm::chunk::{OpCode, VM};
+// use debug::disassemble_chunk;
+use rlox_vm::compiler::run_file;
 use std::env::args;
+use rlox_vm::system_calls::SystemInterface;
 fn main() {
 //     let mut vm = VM::new();
     // let mut const_pool:Vec<Value>;
@@ -19,7 +15,7 @@ fn main() {
     let cli_args: Vec<String> = args().collect();
     let ln = cli_args.len();
     if ln == 2 {
-        run_file(&cli_args[1]);
+        println!("{:?}", run_file(&cli_args[1], SystemInterface{}));
     } else if ln < 2 {
     } else {
         println!("rlox [script]");

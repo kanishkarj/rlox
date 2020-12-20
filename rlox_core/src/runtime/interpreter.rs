@@ -463,6 +463,10 @@ impl Visitor<Object> for Interpreter {
         }
         return Ok(Object::Nil);
     }
+
+    fn visit_stack_trace_stmt(&mut self) -> Result<Object, LoxError> {
+        todo!()
+    }
 }
 
 impl Interpreter {

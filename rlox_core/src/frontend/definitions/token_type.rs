@@ -116,6 +116,9 @@ pub enum TokenType {
 
     #[token("continue")]
     CONTINUE,
+
+    #[token("stacktrace")]
+    STACKTRACE,
     
     // Or regular expressions.
     #[regex("[a-zA-Z]+[a-zA-Z0-9_]*")]

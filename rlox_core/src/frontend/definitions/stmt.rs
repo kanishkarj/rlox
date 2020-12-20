@@ -15,6 +15,7 @@ pub enum Stmt {
     Continue(Box<Continue>),
     If(Box<If>),
     Return(Box<Return>),
+    StackTrace,
 }
 
 #[derive(Debug, Clone)]
@@ -72,11 +73,12 @@ impl Function {
 #[derive(Debug, Clone)]
 pub struct Print {
     pub expr: Expr,
+    pub token: Token,
 }
 
 impl Print {
-    pub fn new(expr: Expr) -> Self {
-        Self { expr }
+    pub fn new(expr: Expr, token: Token) -> Self {
+        Self { expr, token }
     }
 }
 
@@ -94,13 +96,14 @@ impl Var {
 
 #[derive(Debug, Clone)]
 pub struct While {
+    pub token: Token,
     pub condition: Expr,
     pub body: Stmt,
 }
 
 impl While {
-    pub fn new(condition: Expr, body: Stmt) -> Self {
-        Self { condition, body }
+    pub fn new(condition: Expr, body: Stmt, token: Token) -> Self {
+        Self { token, condition, body }
     }
 }
 
@@ -128,14 +131,16 @@ impl Continue {
 
 #[derive(Debug, Clone)]
 pub struct If {
+    pub token: Token,
     pub condition: Expr,
     pub then_branch: Stmt,
     pub else_branch: Option<Stmt>,
 }
 
 impl If {
-    pub fn new(condition: Expr, then_branch: Stmt, else_branch: Option<Stmt>) -> Self {
+    pub fn new(condition: Expr, then_branch: Stmt, else_branch: Option<Stmt>, token: Token) -> Self {
         Self {
+            token,
             condition,
             then_branch,
             else_branch,

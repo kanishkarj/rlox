@@ -37,6 +37,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "lox_tests"
+version = "0.1.0"
+dependencies = [
+ "rlox_core",
+ "rlox_vm",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"

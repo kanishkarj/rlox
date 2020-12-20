@@ -1,20 +1,11 @@
 [package]
-name = "rlox_vm"
+name = "lox_tests"
 version = "0.1.0"
 authors = ["Kanishkar J <kanishkarj@hotmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-
-[lib]
-name = "rlox_vm"
-path = "src/lib.rs"
-
-[[bin]]
-name = "rlox_bc"
-path = "src/bin.rs"
-
-
 [dependencies]
 rlox_core = {path= "../rlox_core" }
+rlox_vm = {path= "../rlox_vm" }

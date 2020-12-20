@@ -2,5 +2,6 @@
 
 members = [
     "rlox_core",
-    "rlox_vm"
+    "rlox_vm",
+    "lox_tests"
 ]

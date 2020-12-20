@@ -4,7 +4,7 @@ use core::cell::RefCell;
 use std::rc::Rc;
 use rlox_core::frontend::definitions::token::Token;
 use crate::chunk::Object;
-use crate::VM;
+use crate::chunk::VM;
 use rlox_core::frontend::definitions::stmt::*;
 use rlox_core::frontend::definitions::literal::Literal;
 use rlox_core::frontend::definitions::expr::*;
@@ -19,25 +19,30 @@ use std::fs::read_to_string;
 use std::path::Path;
 use rlox_core::frontend::definitions::token_type::TokenType;
 use crate::chunk::Local;
-pub fn run_file(path: &String) {
-    let path = Path::new(path);
+use crate::system_calls::SystemCalls;
+
+pub fn run_file<T: SystemCalls, S: AsRef<str>>(path: S, sys_interface: T)  -> Result<(), LoxError> {
+    let path = Path::new(path.as_ref());
     let script = read_to_string(path).unwrap();
-    if let Err(err) = run(&script) {
-        println!("{}", err);
-    }
+    run(&script, sys_interface)?;
+    Ok(())
+    // if let Err(err) = run(&script, sys_interface) {
+    //     println!("{}", err);
+    // }
 }
 
-fn run(script: &String) -> Result<(), LoxError> {
-    let mut ast = Parser::new(Lexer::new().parse(script)?).parse()?;
+fn run<T: SystemCalls, S: AsRef<str>>(script: S, sys_interface: T) -> Result<(), LoxError> {
+    let x = script.as_ref().to_string();
+    let mut ast = Parser::new(Lexer::new().parse(&x)?).parse()?;
     Resolver::new().resolve(&mut ast)?;
     // you have the ast here.
     let mut comp = Compiler::new();
     ast.accept(&mut comp)?;
     comp.curr_fn_mut().chunks.push(OpCode::Exit(0));
-    // println!("{:?}", comp.curr_fn().chunks);
+    println!("{:?}", comp.curr_fn().chunks);
     let curr_fn = comp.curr_fn().clone();
-    let mut vm = VM::new(comp.constant_pool, curr_fn);
-    vm.run(false);
+    let mut vm = VM::new(sys_interface, comp.constant_pool, curr_fn);
+    vm.run(false)?;
     Ok(())
 }
 
@@ -79,9 +84,9 @@ impl Compiler {
     }
     fn named_variable(&mut self, token: &Token) {
         let mut x = self.resolve_local(token);
-        // println!("{:?} {}", token.scope, x);
         if x == -1 {
             x = self.resolve_upvalue(token);
+            // println!("{:?} {} {:?} {}", self.curr_fn().name, token.lexeme ,token.scope, x);
             if x != -1 {
                 self.curr_fn_mut().chunks.push(OpCode::GetUpvalue(token.line_no, x as usize));
             } else {
@@ -187,7 +192,7 @@ impl Visitor<()> for Compiler {
         for arg in &val.arguments {
             arg.accept(self)?;
         }
-        self.curr_fn_mut().chunks.push(OpCode::Call(0, val.arguments.len()));
+        self.curr_fn_mut().chunks.push(OpCode::Call(val.paren.line_no, val.arguments.len()));
         Ok(())
     }
 
@@ -196,17 +201,22 @@ impl Visitor<()> for Compiler {
     }
 
     fn visit_unary_expr(&mut self, val: &Unary) -> Result<(), LoxError> {
-        if val.operator.token_type != TokenType::MINUS {
-            return Err(LoxError::RuntimeError(String::from(""), val.operator.line_no, String::from("")))
+        if val.operator.token_type == TokenType::MINUS {
+            val.right.accept(self)?;
+            self.curr_fn_mut().chunks.push(OpCode::Negate(val.operator.line_no));
+            Ok(())
+        } else if val.operator.token_type == TokenType::BANG {
+            val.right.accept(self)?;
+            self.curr_fn_mut().chunks.push(OpCode::Not(val.operator.line_no));
+            Ok(())
+        } else {
+            Err(LoxError::RuntimeError(String::from(""), val.operator.line_no, String::from("")))
         }
-        val.right.accept(self)?;
-        self.curr_fn_mut().chunks.push(OpCode::Negate(val.operator.line_no));
-        Ok(())
     }
 
     fn visit_literal_expr(&mut self, val: &Literal) -> Result<(), LoxError> {
         let x = self.add_const(val.clone().into());
-        self.curr_fn_mut().chunks.push(OpCode::Constant(0, x));
+        self.curr_fn_mut().chunks.push(OpCode::Constant(x));
         Ok(())
     }
 
@@ -242,7 +252,6 @@ impl Visitor<()> for Compiler {
     }
 
     fn visit_expression_stmt(&mut self, val: &Expression) -> Result<(), LoxError> {
-        // println!("{:?}", val);
         val.expr.accept(self)?;
         self.curr_fn_mut().chunks.push(OpCode::StackPop);
         Ok(())
@@ -250,7 +259,7 @@ impl Visitor<()> for Compiler {
 
     fn visit_print_stmt(&mut self, val: &Print) -> Result<(), LoxError> {
         val.expr.accept(self)?;
-        self.curr_fn_mut().chunks.push(OpCode::Print(0));
+        self.curr_fn_mut().chunks.push(OpCode::Print(val.token.line_no));
         Ok(())
     }
 
@@ -309,39 +318,39 @@ impl Visitor<()> for Compiler {
     fn visit_if_stmt(&mut self, val: &If) -> Result<(), LoxError> {
         val.condition.accept(self)?;
         // change the 9999 to some sentinel value, in compile mode verify the jump does not point to any sentinel value.
-        self.curr_fn_mut().chunks.push(OpCode::JumpIfFalse(0, 9999));
+        self.curr_fn_mut().chunks.push(OpCode::JumpIfFalse(val.token.line_no, 9999));
         let then_jump = self.curr_fn().chunks.len()-1;
         self.curr_fn_mut().chunks.push(OpCode::StackPop);
 
         val.then_branch.accept(self)?;
 
-        self.curr_fn_mut().chunks.push(OpCode::Jump(0, 9999));
+        self.curr_fn_mut().chunks.push(OpCode::Jump(val.token.line_no, 9999));
         let else_jump = self.curr_fn().chunks.len()-1;
         
-        self.curr_fn_mut().chunks[then_jump] = OpCode::JumpIfFalse(0, self.curr_fn().chunks.len()-1);
+        self.curr_fn_mut().chunks[then_jump] = OpCode::JumpIfFalse(val.token.line_no, self.curr_fn().chunks.len());
         self.curr_fn_mut().chunks.push(OpCode::StackPop);
 
         if let Some(else_branch) = &val.else_branch {
             else_branch.accept(self)?;
         }
-        self.curr_fn_mut().chunks[else_jump] = OpCode::Jump(0, self.curr_fn().chunks.len()-1);
+        self.curr_fn_mut().chunks[else_jump] = OpCode::Jump(val.token.line_no, self.curr_fn().chunks.len());
 
         Ok(())
     }
 
     fn visit_while_stmt(&mut self, val: &While) -> Result<(), LoxError> {
-        let loop_start = self.curr_fn().chunks.len();
+        let loop_start = self.curr_fn().chunks.len()+1;
         self.curr_fn_mut().chunks.push(OpCode::NoOp);
         val.condition.accept(self)?;
         
-        self.curr_fn_mut().chunks.push(OpCode::JumpIfFalse(0, 9999));
+        self.curr_fn_mut().chunks.push(OpCode::JumpIfFalse(val.token.line_no, 9999));
         let then_jump = self.curr_fn().chunks.len()-1;
         self.curr_fn_mut().chunks.push(OpCode::StackPop);
 
         val.body.accept(self)?;
 
-        self.curr_fn_mut().chunks.push(OpCode::Jump(0, loop_start));
-        self.curr_fn_mut().chunks[then_jump] = OpCode::JumpIfFalse(0, self.curr_fn().chunks.len());
+        self.curr_fn_mut().chunks.push(OpCode::Jump(val.token.line_no, loop_start));
+        self.curr_fn_mut().chunks[then_jump] = OpCode::JumpIfFalse(val.token.line_no, self.curr_fn().chunks.len());
         self.curr_fn_mut().chunks.push(OpCode::StackPop);
         Ok(())
     }
@@ -366,9 +375,10 @@ impl Visitor<()> for Compiler {
         val.body.accept(self)?;
         
         self.curr_fn_mut().chunks.push(OpCode::NilVal);
-        self.curr_fn_mut().chunks.push(OpCode::Return(0));
+        self.curr_fn_mut().chunks.push(OpCode::Return(val.name.line_no));
 
         self.end_scope();
+
         // original new func
         let new_func = self.scoped_fns.pop().unwrap();
         // println!("name:{:?} ||| upvals:{:?}", new_func.name, new_func.upvalues);
@@ -376,10 +386,16 @@ impl Visitor<()> for Compiler {
         // self.declare_variable(&val.name)?;
         // if self.curr_fn().scope_depth > 0 {return Ok(())}
         
-        let x = self.add_const(Object::Str(val.name.lexeme.clone()));
-        let y = self.add_const(Object::Closure(Rc::new(new_func)));
-        self.curr_fn_mut().chunks.push(OpCode::Constant(0, y));
+        // let x = self.add_const(Object::Str(val.name.lexeme.clone()));
+        let y = self.add_const(Object::Closure(Box::new(new_func)));
+        // self.curr_fn_mut().chunks.push(OpCode::Constant(y));
         self.curr_fn_mut().chunks.push(OpCode::Closure(val.name.line_no, y));
+        //self.curr_fn_mut().chunks.push(OpCode::DefineGlobal(val.name.line_no, x));
+        self.declare_variable(&val.name)?;
+        println!("{}", self.curr_fn().scope_depth);
+        if self.curr_fn().scope_depth > 0 {return Ok(())}
+        
+        let x = self.add_const(Object::Str(val.name.lexeme.clone()));
         self.curr_fn_mut().chunks.push(OpCode::DefineGlobal(val.name.line_no, x));
         self.curr_fn_mut().chunks.push(OpCode::StackPop);
 
@@ -389,15 +405,20 @@ impl Visitor<()> for Compiler {
     fn visit_return_stmt(&mut self, val: &Return) -> Result<(), LoxError> {
         if let Some(vl) = &val.value {
             vl.accept(self)?;
-            self.curr_fn_mut().chunks.push(OpCode::Return(0));
+            self.curr_fn_mut().chunks.push(OpCode::Return(val.keyword.line_no));
         } else {
             self.curr_fn_mut().chunks.push(OpCode::NilVal);
-            self.curr_fn_mut().chunks.push(OpCode::Return(0));
+            self.curr_fn_mut().chunks.push(OpCode::Return(val.keyword.line_no));
         }
         Ok(())
     }
 
     fn visit_class_stmt(&mut self, val: &Class) -> Result<(), LoxError> {
         todo!();
+    }
+
+    fn visit_stack_trace_stmt(&mut self) -> Result<(), LoxError> {
+        self.curr_fn_mut().chunks.push(OpCode::PrintStackTrace);
+        Ok(())
     }
 }
