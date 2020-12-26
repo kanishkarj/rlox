@@ -1,7 +1,6 @@
-use crate::chunk::FuncSpec;
+use crate::{chunk::FuncSpec, gc::{root::CustomClone, heap::Heap, root::Trace}};
 use crate::chunk::FunctionType;
 use core::cell::RefCell;
-use std::rc::Rc;
 use rlox_core::frontend::definitions::token::Token;
 use crate::chunk::Object;
 use crate::chunk::VM;
@@ -36,28 +35,33 @@ fn run<T: SystemCalls, S: AsRef<str>>(script: S, sys_interface: T) -> Result<(),
     let mut ast = Parser::new(Lexer::new().parse(&x)?).parse()?;
     Resolver::new().resolve(&mut ast)?;
     // you have the ast here.
-    let mut comp = Compiler::new();
+    let mut gc = Heap::new();
+    let mut comp = Compiler::new(&gc);
     ast.accept(&mut comp)?;
     comp.curr_fn_mut().chunks.push(OpCode::Exit(0));
     println!("{:?}", comp.curr_fn().chunks);
-    let curr_fn = comp.curr_fn().clone();
-    let mut vm = VM::new(sys_interface, comp.constant_pool, curr_fn);
-    vm.run(false)?;
+    println!("hello");
+    let curr_fn = comp.curr_fn().clone(&gc);
+    let cons_pl = comp.constant_pool;
+    let mut vm = VM::new(sys_interface, cons_pl, curr_fn, &gc);
+    vm.run(false, &gc)?;
     Ok(())
 }
 
 
-struct Compiler{
+struct Compiler<'a>{
     // pub chunk: Vec<OpCode>,
     pub constant_pool: Vec<Object>,
-    pub scoped_fns: Vec<FuncSpec>
+    pub scoped_fns: Vec<FuncSpec>,
+    pub gc: &'a Heap,
 }
 
-impl Compiler {
-    pub fn new() -> Self {
+impl<'a> Compiler<'a> {
+    pub fn new(gc: &'a Heap) -> Self {
         Compiler {
             constant_pool: vec![],
             scoped_fns: vec![FuncSpec::new(0, None, FunctionType::SCRIPT)],
+            gc
         }
     }
     pub fn add_const(&mut self, val: Object) -> usize {
@@ -167,7 +171,7 @@ impl Compiler {
     }
 }
 
-impl Visitor<()> for Compiler {
+impl<'a> Visitor<()> for Compiler<'a> {
     fn visit_binary_expr(&mut self, val: &Binary) -> Result<(), LoxError> {
         val.left.accept(self)?;
         val.right.accept(self)?;
@@ -387,7 +391,8 @@ impl Visitor<()> for Compiler {
         // if self.curr_fn().scope_depth > 0 {return Ok(())}
         
         // let x = self.add_const(Object::Str(val.name.lexeme.clone()));
-        let y = self.add_const(Object::Closure(Box::new(new_func)));
+        let func_root = self.gc.get_unique_root(new_func);
+        let y = self.add_const(Object::Closure(func_root));
         // self.curr_fn_mut().chunks.push(OpCode::Constant(y));
         self.curr_fn_mut().chunks.push(OpCode::Closure(val.name.line_no, y));
         //self.curr_fn_mut().chunks.push(OpCode::DefineGlobal(val.name.line_no, x));

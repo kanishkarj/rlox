@@ -1,6 +1,5 @@
 
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::time::SystemTime;
 use std::fmt::Error;
 use std::fmt::Formatter;
@@ -11,7 +10,7 @@ use rlox_core::frontend::definitions::token::Token;
 use std::collections::HashMap;
 use std::ops::{Add,Mul,Div,Sub};
 use std::fmt::Display;
-use crate::system_calls::SystemCalls;
+use crate::{gc::{heap::Heap, root::{CustomClone, CustomVecOps, Root, UniqueRoot}}, system_calls::SystemCalls};
 
 const MAX_STACK: usize = 1000;
 
@@ -25,27 +24,61 @@ type NativeFn = fn(args: Vec<Object>) -> Object;
  * object pooling
  * consider ecs.
  * in all vecs assign a decently large capacity
+ * pass strings by ref and garbage collect them too
+ * trace strings too, string pooling, handle weak references to these strings while garbage collecting
 */
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Object {
     Str(String),
     Num(f64),
     Bool(bool),
     Nil,
     // TODO: non closures can be made functions instead of closures
-    Function(FuncSpec),
+    // Function(FuncSpec),
     NativeFunction(NativeFn),
-    Closure(Box<FuncSpec>),
+    Closure(UniqueRoot<FuncSpec>),
 }
 
-#[derive(Debug, Clone)]
+
+impl CustomClone for Object {
+    fn clone(&self, gc: &Heap) -> Self {
+        match self {
+            Object::Str(v) => {Object::Str(v.clone())}
+            Object::Num(v) => {Object::Num(*v)}
+            Object::Bool(v) => {Object::Bool(*v)}
+            Object::Nil => {Object::Nil}
+            Object::NativeFunction(v) => Object::NativeFunction(v.clone()),
+            Object::Closure(v) => {Object::Closure(v.clone(gc))}
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum UpValue{
     Open(usize),
     Closed(Object)
 }
-#[derive(Debug, Clone)]
+
+impl CustomClone for UpValue {
+    fn clone(&self, gc: &Heap) -> Self {
+        match self{
+            UpValue::Open(val) => {UpValue::Open(*val)}
+            UpValue::Closed(val) => {UpValue::Closed(val.clone(gc))}
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct UpValueWrap(pub RefCell<UpValue>);
+
+impl CustomClone for UpValueWrap {
+    fn clone(&self, gc: &Heap) -> Self {
+        UpValueWrap {
+            0: self.0.clone(gc)
+        }
+    }
+}
 
 impl UpValueWrap {
     pub fn new (upval: UpValue) -> Self {
@@ -54,8 +87,8 @@ impl UpValueWrap {
     pub fn update (&self, upval: UpValue){
        self.0.replace(upval);
     }
-    pub fn get(&self) -> UpValue {
-        self.0.borrow().clone()
+    pub fn get(&self, gc: &Heap) -> UpValue {
+        self.0.borrow().clone(gc)
     }
 }
 
@@ -94,7 +127,7 @@ impl Display for Object {
             Object::Num(val) => writer.write_str(&val.to_string()),
             Object::Bool(val) => writer.write_str(&val.to_string()),
             Object::Nil => writer.write_str("Nil"),
-            Object::Function(val) => writer.write_fmt(format_args!("Function<{:?}>", val.name)),
+            // Object::Function(val) => writer.write_fmt(format_args!("Function<{:?}>", val.name)),
             Object::NativeFunction(_) => writer.write_fmt(format_args!("NativeFunction<>")),
             Object::Closure(val) => writer.write_fmt(format_args!("Closure<{:?}>", val.name)),
         }
@@ -262,7 +295,7 @@ pub struct Local {
     pub depth: i32,
     pub is_closed: bool,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct FuncSpec {
     pub arity: u32,
     pub chunks: Vec<OpCode>,
@@ -272,7 +305,23 @@ pub struct FuncSpec {
     pub scope_depth: i32,
     // index, isLocal
     pub upvalues: Vec<(usize, bool)>,
-    pub upvalues_ref: RefCell<Vec<Rc<UpValueWrap>>>,
+    pub upvalues_ref: RefCell<Vec<Root<UpValueWrap>>>,
+}
+
+impl CustomClone for FuncSpec {
+    fn clone(&self, gc: &Heap) -> Self {
+       FuncSpec {
+           arity: self.arity.clone(),
+           chunks: self.chunks.clone(),
+           name: self.name.clone(),
+           fn_type: self.fn_type.clone(),
+           locals: self.locals.clone(),
+           scope_depth: self.scope_depth.clone(),
+           upvalues: self.upvalues.clone(),
+           upvalues_ref: self.upvalues_ref.clone(gc),
+
+       }
+    }
 }
 
 impl FuncSpec{ 
@@ -300,6 +349,27 @@ impl FuncSpec{
         self.upvalues.push((index, is_local));
         self.upvalues.len() - 1
     }
+    
+    // pub fn get_chunks(&self) -> &mut Vec<OpCode> {
+    //     &mut self.chunks
+    // }
+
+    // pub fn get_local(&self, ind: usize) -> &mut Local {
+    //     &mut self.locals.get_mut(ind).unwrap()
+    // }
+    // pub fn get_upval(&self, ind: usize) -> &mut (usize, bool) {
+    //     &mut self.upvalues.get_mut(ind).unwrap()
+    // }
+    // pub fn get_upval_ref(&self, ind: usize) -> &mut UpValueWrap {
+    //     &mut self.upvalues_ref.borrow_mut().get_mut(ind).unwrap()
+    // }
+
+    // pub fn get_name(&self) -> String {
+    //     match self.name {
+    //         Some(name) => name,
+    //         _ => String::from("")
+    //     }
+    // }
 }
 
 #[derive(Debug, Clone)]
@@ -372,10 +442,10 @@ pub enum OpCode {
 }
 
 macro_rules! binary_op {
-    ($self:ident, $op:ident, $line_no:ident) => {
+    ($self:ident, $op:ident, $line_no:ident, $gc: ident) => {
         {
-                let b = $self.pop_stack().unwrap(); 
-               let a = $self.pop_stack().unwrap();
+                let b = $self.pop_stack($gc).unwrap(); 
+               let a = $self.pop_stack($gc).unwrap();
                let x = a.$op(&b,$line_no)?;
                $self.push_stack(x);
         }
@@ -402,14 +472,14 @@ impl Display for PrintVec {
     }
 }
 
-struct CallFrame {
-    func: Box<FuncSpec>,
+pub struct CallFrame {
+    pub func: UniqueRoot<FuncSpec>,
     ip: usize,
     slot: usize
 }
 
 impl CallFrame {
-    pub fn new(func: Box<FuncSpec>, ip: usize, slot: usize) -> Self {
+    pub fn new(func: UniqueRoot<FuncSpec>, ip: usize, slot: usize) -> Self {
         CallFrame {
             func,
             ip,
@@ -419,26 +489,26 @@ impl CallFrame {
 }
 
 pub struct VM<T: SystemCalls> {
-    frames: Vec<CallFrame>,
+    pub frames: Vec<CallFrame>,
 
-    constant_pool: Vec<Object>,
-    stack: Vec<Object>,
+    pub constant_pool: Vec<Object>,
+    pub stack: Vec<Object>,
     sp: usize,
-    globals: HashMap<String, Object>,
-    open_upvalues: RefCell<Vec<Rc<UpValueWrap>>>,
+    pub globals: HashMap<String, Object>,
+    pub open_upvalues: RefCell<Vec<Root<UpValueWrap>>>,
     sys_interface: T
 }
 
 impl<T: SystemCalls> VM<T> {
-    pub fn new(sys_interface: T, constant_pool: Vec<Object>, func: FuncSpec) -> Self {
+    pub fn new(sys_interface: T, constant_pool: Vec<Object>, func: FuncSpec, gc: &Heap) -> Self {
         let mut vm = VM {
             constant_pool,
             stack: vec![],
             sp:0,
             globals: HashMap::new(),
-            frames: vec![CallFrame::new(Box::new(func),0,0)],
+            frames: vec![CallFrame::new(gc.get_unique_root(func),0,0)],
             open_upvalues: RefCell::new(vec![]),
-            sys_interface
+            sys_interface,
         };
 
         vm.define_native_fn("clock", |_| {
@@ -459,12 +529,16 @@ impl<T: SystemCalls> VM<T> {
 
     //TODO: try prefetching
 //TODO: this whole thing barely does any error handling
-    pub fn run(&mut self, is_debug: bool) -> Result<(), LoxError>{
+    pub fn run(&mut self, is_debug: bool, gc: &Heap) -> Result<(), LoxError>{
         use OpCode::*;
 
         // let frame = self.frames.last_mut().unwrap();
-
+        let mut i  = 0;
         loop {
+            if i%40 == 0 {
+                gc.collect_free(self);
+            }
+            i += 1;
             //TODO: handle debugging
             // if is_debug {
             //     disassemble_inst(&self, self.ip);
@@ -477,49 +551,49 @@ impl<T: SystemCalls> VM<T> {
                 Constant(pos) => {
                     // println!("const: {:?}", self.constant_pool[pos]);
                 // this will create new copies everytime. think over
-                self.push_stack(self.constant_pool[pos].clone())},
+                self.push_stack(self.constant_pool[pos].clone(&gc))},
                 Exit(_) => {
                     // println!("{:?}", self.stack);
                     return Ok(())
                 },
                 Negate(line_no) => {
-                    let a = self.pop_stack().unwrap();
+                    let a = self.pop_stack(gc).unwrap();
                     self.push_stack(a.neg(line_no)?);
                 },
                 Not(line_no) => {
-                    let a = self.pop_stack().unwrap();
+                    let a = self.pop_stack(gc).unwrap();
                     self.push_stack(a.not(line_no)?);
                 },
                 Add(line_no) => {
-                    binary_op!(self,add,line_no)
+                    binary_op!(self,add,line_no, gc)
                 },
                 Divide(line_no) => {
-                    binary_op!(self,div,line_no)
+                    binary_op!(self,div,line_no, gc)
                 },
                 Multiply(line_no) => {
-                    binary_op!(self,mul,line_no)
+                    binary_op!(self,mul,line_no, gc)
                 },
                 Subs(line_no) => {
-                    binary_op!(self,sub,line_no)
+                    binary_op!(self,sub,line_no, gc)
                 },
-                GreaterThan(line_no) => {binary_op!(self,gt,line_no)},
-                GreaterThanEq(line_no) => {binary_op!(self,gte,line_no)},
-                LesserThan(line_no) => {binary_op!(self,lt,line_no)},
-                LesserThanEq(line_no) => {binary_op!(self,lte,line_no)},
-                NotEqualTo(_) => {let val = self.pop_stack().unwrap() != self.pop_stack().unwrap(); self.push_stack(Object::Bool(val));},
-                EqualTo(_) => {let val = self.pop_stack().unwrap() == self.pop_stack().unwrap(); self.push_stack(Object::Bool(val));},
-                BoolOr(line_no) => {binary_op!(self,bool_or,line_no)},
-                BoolAnd(line_no) => {binary_op!(self,bool_and,line_no)},
+                GreaterThan(line_no) => {binary_op!(self,gt,line_no, gc)},
+                GreaterThanEq(line_no) => {binary_op!(self,gte,line_no, gc)},
+                LesserThan(line_no) => {binary_op!(self,lt,line_no, gc)},
+                LesserThanEq(line_no) => {binary_op!(self,lte,line_no, gc)},
+                NotEqualTo(_) => {let val = self.pop_stack(gc).unwrap() != self.pop_stack(gc).unwrap(); self.push_stack(Object::Bool(val));},
+                EqualTo(_) => {let val = self.pop_stack(gc).unwrap() == self.pop_stack(gc).unwrap(); self.push_stack(Object::Bool(val));},
+                BoolOr(line_no) => {binary_op!(self,bool_or,line_no, gc)},
+                BoolAnd(line_no) => {binary_op!(self,bool_and,line_no, gc)},
                 NilVal => {self.push_stack(Object::Nil)},
                 Print(_) => {
-                    let x = self.pop_stack().unwrap();
-                    self.sys_interface.print(&x);
+                    let x = self.pop_stack(gc).unwrap();
+                    self.sys_interface.print(&x, gc);
                 },
-                StackPop => {self.pop_stack();},
+                StackPop => {self.pop_stack(gc);},
                 DefineGlobal(line_no, pos) => {
                     let name = self.constant_pool[pos].to_string();
-                    if let Some(val) = self.pop_stack() {
-                        self.globals.insert(name, val.clone());
+                    if let Some(val) = self.pop_stack(gc) {
+                        self.globals.insert(name, val.clone(&gc));
                     } else {
                         return Err(LoxError::RuntimeError("gg".to_string(),line_no,"".to_string()))
                     }
@@ -528,7 +602,7 @@ impl<T: SystemCalls> VM<T> {
                     //TODO: actually check if it's a string
                     let name = self.constant_pool[pos].to_string();
                     if let Some(val) = self.globals.get(&name) {
-                        self.push_stack(val.clone());
+                        self.push_stack(val.clone(&gc));
                     } else {
                         return Err(LoxError::RuntimeError("gg".to_string(),line_no,"".to_string()))
                     }
@@ -537,7 +611,7 @@ impl<T: SystemCalls> VM<T> {
                     //TODO: actually check if it's a string
                     let name = self.constant_pool[pos].to_string();
                     if let Some(val) = self.stack.last() {
-                        if self.globals.insert(name, val.clone()).is_none() {
+                        if self.globals.insert(name, val.clone(&gc)).is_none() {
                             return Err(LoxError::RuntimeError("unknown".to_string(),line_no,"".to_string()))
                         }
                     } else {
@@ -546,27 +620,27 @@ impl<T: SystemCalls> VM<T> {
                 }
                 GetLocal(_, pos) => {
                     if let Some(val) = self.stack.get(self.frames.last_mut().unwrap().slot + pos) {
-                        self.push_stack(val.clone());
+                        self.push_stack(val.clone(&gc));
                     } else {
                         return Err(LoxError::RuntimeError("gl".to_string(),0,"".to_string()))
                     }
                 }
                 SetLocal(_, pos) => {
                     if let Some(val) = self.stack.last() {
-                        self.stack[self.frames.last_mut().unwrap().slot + pos] = val.clone();
+                        self.stack[self.frames.last_mut().unwrap().slot + pos] = val.clone(&gc);
                     } else {
                         return Err(LoxError::RuntimeError("sl".to_string(),0,"".to_string()))
                     }
                 }
                 SetUpvalue(_, pos) => {
                     if let Some(val) = self.stack.last() {
-                        let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone().get();
+                        let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone(&gc).get(&gc);
                         match x {
                             UpValue::Open(up_pos) => {
-                                self.stack[up_pos] = val.clone();
+                                self.stack[up_pos] = val.clone(&gc);
                             },
                             UpValue::Closed(_) => {
-                                self.frames.last().unwrap().func.upvalues_ref.borrow_mut()[pos].update(UpValue::Closed(val.clone()));
+                                self.frames.last().unwrap().func.upvalues_ref.borrow_mut()[pos].update(UpValue::Closed(val.clone(&gc)));
                             }
                             _ => {}
                         }
@@ -576,16 +650,16 @@ impl<T: SystemCalls> VM<T> {
                 }
                 GetUpvalue(_, pos) => {
                     // use std::borrow::Borrow; 
-                    // let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone().borrow();
+                    // let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone(&gc).borrow();
                     // let x = &*x.get(pos).unwrap().borrow();
-                    match self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(pos).unwrap().clone().get() {
+                    match self.frames.last().unwrap().func.upvalues_ref.clone(&gc).borrow().get(pos).unwrap().clone(&gc).get(&gc) {
                         UpValue::Open(up_pos) => {
                             // println!("upping Open {:?}", up_pos);
-                            self.push_stack(self.stack[up_pos].clone());
+                            self.push_stack(self.stack[up_pos].clone(&gc));
                         },
                         UpValue::Closed(val) => {
                             // println!("upping Closed {}", val);
-                            self.push_stack(val.clone());
+                            self.push_stack(val.clone(&gc));
                         }
                         _ => {}
                     }
@@ -607,11 +681,11 @@ impl<T: SystemCalls> VM<T> {
                     let stack_len = self.stack.len()-args_count;
                     // let frame = self.frames.last().unwrap();
                     if let Object::Closure(func) = &self.stack[stack_len - 1] {
-                        self.frames.push(CallFrame::new(func.clone(),0,stack_len));
+                        self.frames.push(CallFrame::new(gc.clone_unique_root(func),0,stack_len));
                         // println!("upvals {:?}: {:?}", func.name, func.upvalues);
                         // println!("open upvals {:?}: {:?}", func.name, self.open_upvalues);
-                    } else if let Object::NativeFunction(func) = self.stack[stack_len - 1].clone() {
-                        let ret_val = func(self.stack[stack_len..(stack_len+args_count)].to_vec());
+                    } else if let Object::NativeFunction(func) = self.stack[stack_len - 1].clone(&gc) {
+                        let ret_val = func(self.to_vec(&self.stack[stack_len..(stack_len+args_count)], gc));
   
                         for _ in 0..(args_count) {
                             self.stack.pop();
@@ -623,17 +697,17 @@ impl<T: SystemCalls> VM<T> {
                     }
                 }
                 Closure(_, pos) => {
-                    if let Object::Closure(func) = self.constant_pool[pos].clone() {
+                    if let Object::Closure(func) = self.constant_pool[pos].clone(&gc) {
                         for up_val in func.upvalues.iter() {
                             let (index, is_local) = &up_val;
                             // println!("{:?} {} {}", func.name, self.stack[self.frames.last().unwrap().slot + index], is_local);
                             if *is_local {
                                 // println!("up open {:?} {:?}", func.name, self.frames.last().unwrap().slot + index);
                                 // check first if an upvalue thing exists already for this particular local. if yes, don't add the following.
-                                func.upvalues_ref.borrow_mut().push(self.capture_upvalue(self.frames.last().unwrap().slot + index));
+                                func.upvalues_ref.borrow_mut().push(self.capture_upvalue(self.frames.last().unwrap().slot + index, gc));
                             } else {
                                 // println!("{:?}", up_val);
-                                func.upvalues_ref.borrow_mut().push(self.frames.last().unwrap().func.upvalues_ref.borrow().get(*index).unwrap().clone());
+                                func.upvalues_ref.borrow_mut().push(self.frames.last().unwrap().func.upvalues_ref.borrow().get(*index).unwrap().clone(&gc));
                             }
                         }
                         self.push_stack(Object::Closure(func));
@@ -642,7 +716,7 @@ impl<T: SystemCalls> VM<T> {
                 Return(_) => {
                     // println!("upvals: {:?}", self.open_upvalues);
                     //TODO: use slots here
-                    let val = self.pop_stack().unwrap();
+                    let val = self.pop_stack(gc).unwrap();
                     // TODO: static size stacks, we can just change index instead of actually popping
                     let frame_base = self.frames.last().unwrap().slot;
                     // println!("stack before: {} {}", PrintVec(self.stack.clone()), frame_base);
@@ -650,15 +724,15 @@ impl<T: SystemCalls> VM<T> {
                     while self.stack.len() > frame_base {
                         let i = self.stack.len();
                         // println!("ret Pop: {} {}", self.stack.last().unwrap(), i - frame_base);
-                        self.close_value(i - 1);
+                        self.close_value(i - 1, gc);
                         // if self.frames.last().unwrap().func.locals[i-frame_base].is_closed {
                         // }
                         x += 1;
-                        self.pop_stack();
+                        self.pop_stack(gc);
                     }
                     
                     //removing the function object
-                    self.pop_stack();
+                    self.pop_stack(gc);
 
                     self.frames.pop();
                     self.push_stack(val);
@@ -669,7 +743,7 @@ impl<T: SystemCalls> VM<T> {
                 CloseUpvalue => {
                     // let ln = self.frames.last().unwrap().func.upvalues_ref.borrow().len();
                     // for i in (0..ln).rev() {
-                    //     let top = self.pop_stack().unwrap();
+                    //     let top = self.pop_stack(gc).unwrap();
                     //     match &*self.frames.last().unwrap().func.upvalues_ref.clone().borrow().get(i).unwrap().clone().borrow() {
                     //         UpValue::Open(up_pos) => {
                     //             self.frames.last().unwrap().func.upvalues_ref.clone().borrow_mut()[i] = Rc::new(RefCell::new(UpValue::Closed(top)))
@@ -679,23 +753,31 @@ impl<T: SystemCalls> VM<T> {
                     // }
                     let frame_base = self.frames.last().unwrap().slot;
                     let i = self.stack.len()-1;
-                    self.close_value(i);
-                    self.pop_stack();
+                    self.close_value(i, gc);
+                    self.pop_stack(gc);
                 },
                 PrintStackTrace => {
-                    println!("stacktrace: {}", PrintVec(self.stack.clone()));
+                    println!("stacktrace: {}", PrintVec(self.stack.clone(&gc)));
                 }
             };
         }
     }
 
-    fn close_value(&mut self, ind: usize) {
+    fn to_vec(&self, slice: &[Object], gc: &Heap) -> Vec<Object> {
+        let mut res = vec![];
+        for it in slice {
+            res.push(it.clone(gc))
+        }
+        res
+    }
+
+    fn close_value(&mut self, ind: usize, gc: &Heap) {
         let ln = self.open_upvalues.borrow().len();
         for i in (0..ln).rev() {
-            let top = self.stack.last().unwrap().clone();
+            let top = self.stack.last().unwrap().clone(&gc);
             let mut up_pos = -1;
             
-            match self.open_upvalues.clone().borrow().get(i).unwrap().clone().get() {
+            match self.open_upvalues.clone(&gc).borrow().get(i).unwrap().clone(&gc).get(&gc) {
                 UpValue::Open(tmp) => {
                     up_pos = tmp as i32;
                 },
@@ -714,27 +796,27 @@ impl<T: SystemCalls> VM<T> {
         self.stack.push(val);
     }
 
-    pub fn pop_stack(&mut self) -> Option<Object> {
+    pub fn pop_stack(&mut self, gc: &Heap) -> Option<Object> {
         if self.sp == 0 {
             None
         } else {
             self.sp -= 1;
-            let x = self.stack.pop().clone();
+            let x = self.stack.pop().clone(&gc);
             return x;
         }
     }
 
-    pub fn capture_upvalue(&self, pos: usize) -> Rc<UpValueWrap> {
+    pub fn capture_upvalue(&mut self, pos: usize, gc: &Heap) -> Root<UpValueWrap> {
         // use std::borrow::Borrow;
         for val in self.open_upvalues.borrow().iter() {
-            if let UpValue::Open(pos1) = val.get() {
+            if let UpValue::Open(pos1) = val.get(&gc) {
                 if pos1 == pos {
-                    return Rc::clone(val)
+                    return val.clone(&gc)
                 }
             }
         }
-        let x = Rc::new(UpValueWrap::new(UpValue::Open(pos)));
-        let y = Rc::clone(&x);
+        let x = gc.get_root(UpValueWrap::new(UpValue::Open(pos)));
+        let y = x.clone(&gc);
         self.open_upvalues.borrow_mut().push(y);
         x
     }

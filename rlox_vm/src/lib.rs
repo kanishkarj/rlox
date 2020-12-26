@@ -4,3 +4,4 @@ pub mod debug;
 pub mod compiler;
 pub mod resolver;
 pub mod system_calls;
+pub mod gc;
