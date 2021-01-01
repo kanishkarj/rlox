@@ -53,7 +53,7 @@ use super::*;
             test_fail!(
                 refer_to_name,
                 ".././test-scripts/method/refer_to_name.lox",
-                LoxError::RuntimeError(String::from("method"), 3, String::from(""))
+                LoxError::SemanticError(String::from("method"), 3, String::from(""))
             );
 
             

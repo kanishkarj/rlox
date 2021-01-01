@@ -27,9 +27,9 @@ use std::collections::HashMap;
                 test_succeed!(
                     nested_class,
                     ".././test-scripts/this/nested_class.lox",
-                    LoxInstance::new(LoxClass::new(String::from("Outer"), Rc::new(HashMap::new()), None)),
-                    LoxInstance::new(LoxClass::new(String::from("Outer"), Rc::new(HashMap::new()), None)),
-                    LoxInstance::new(LoxClass::new(String::from("Inner"), Rc::new(HashMap::new()), None))
+                    Class::new(String::from("Outer")),
+                    Class::new(String::from("Outer")),
+                    Class::new(String::from("Inner"))
                 );
 
                 

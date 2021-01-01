@@ -3,14 +3,14 @@ use std::cell::RefCell;
 use std::time::SystemTime;
 use std::fmt::Error;
 use std::fmt::Formatter;
-use rlox_core::error::LoxError;
+use rlox_core::{error::LoxError, frontend::definitions::token_type::TokenType};
 use rlox_core::frontend::definitions::literal::Literal;
 use rlox_core::frontend::definitions::token::Token;
 // use crate::debug::disassemble_inst;
 use std::collections::HashMap;
 use std::ops::{Add,Mul,Div,Sub};
 use std::fmt::Display;
-use crate::{gc::{heap::Heap, root::{CustomClone, CustomVecOps, Root, UniqueRoot}}, system_calls::SystemCalls};
+use crate::{class::Class, gc::{heap::Heap, root::{CustomClone, CustomVecOps, Root, UniqueRoot}}, instance::{Instance, InstanceBoundMethod}, system_calls::SystemCalls};
 
 const MAX_STACK: usize = 1000;
 
@@ -26,6 +26,8 @@ type NativeFn = fn(args: Vec<Object>) -> Object;
  * in all vecs assign a decently large capacity
  * pass strings by ref and garbage collect them too
  * trace strings too, string pooling, handle weak references to these strings while garbage collecting
+ * we don't need to separate method resolution and call always, optimize it chapter 28.5
+ * none of the get* should pop values off the stack, only take ref
 */
 
 #[derive(Debug)]
@@ -38,6 +40,9 @@ pub enum Object {
     // Function(FuncSpec),
     NativeFunction(NativeFn),
     Closure(UniqueRoot<FuncSpec>),
+    ClassDef(Root<Class>),
+    InstanceDef(Root<Instance>),
+    InstanceBindDef(Root<InstanceBoundMethod>),
 }
 
 
@@ -50,6 +55,9 @@ impl CustomClone for Object {
             Object::Nil => {Object::Nil}
             Object::NativeFunction(v) => Object::NativeFunction(v.clone()),
             Object::Closure(v) => {Object::Closure(v.clone(gc))}
+            Object::ClassDef(v) => {Object::ClassDef(v.clone(gc))}
+            Object::InstanceDef(v) => {Object::InstanceDef(v.clone(gc))}
+            Object::InstanceBindDef(v) => {Object::InstanceBindDef(v.clone(gc))}
         }
     }
 }
@@ -130,6 +138,9 @@ impl Display for Object {
             // Object::Function(val) => writer.write_fmt(format_args!("Function<{:?}>", val.name)),
             Object::NativeFunction(_) => writer.write_fmt(format_args!("NativeFunction<>")),
             Object::Closure(val) => writer.write_fmt(format_args!("Closure<{:?}>", val.name)),
+            Object::ClassDef(val) => writer.write_fmt(format_args!("Class<{}>", val.name)),
+            Object::InstanceDef(val) => writer.write_fmt(format_args!("Instance<{}>", val.class.name)),
+            Object::InstanceBindDef(val) => writer.write_fmt(format_args!("InstanceBind<>")),
         }
     }
 }
@@ -326,8 +337,24 @@ impl CustomClone for FuncSpec {
 
 impl FuncSpec{ 
     pub fn new(arity: u32, name: Option<String>, fn_type: FunctionType) -> Self {
+        let mut locals = vec![];
+        // println!("fn {:?} {:?}", name, fn_type);
+        if let FunctionType::FUNCTION = fn_type {
+            locals.push(Local{
+                name: Token::new(TokenType::IDENTIFIER, 0, None, String::from("")),
+                depth: 0,
+                is_closed: false,
+            });
+        } else if let FunctionType::SCRIPT = fn_type {
+        } else {
+            locals.push(Local{
+                name: Token::new(TokenType::IDENTIFIER, 0, None, String::from("this")),
+                depth: 0,
+                is_closed: false,
+            });
+        }
         FuncSpec {
-            arity, chunks: vec![], name, fn_type, locals: vec![], scope_depth: 0, upvalues: vec![], upvalues_ref: RefCell::new(vec![])
+            arity, chunks: vec![], name, fn_type, locals, scope_depth: 0, upvalues: vec![], upvalues_ref: RefCell::new(vec![])
         }
     }
 
@@ -376,6 +403,8 @@ impl FuncSpec{
 pub enum FunctionType {
     FUNCTION,
     SCRIPT,
+    METHOD,
+    INIT
 }
 
 // TODO: ensure every primitive Object is immutable
@@ -425,6 +454,11 @@ pub enum OpCode {
     GetUpvalue(u32, usize),
     SetUpvalue(u32, usize),
 
+    GetProperty(u32, usize),
+    SetProperty(u32, usize),
+
+    GetSuper(u32, usize),
+
     //Control Flow
     JumpIfFalse(u32, usize),
     Jump(u32, usize),
@@ -432,6 +466,9 @@ pub enum OpCode {
     //Fn
     Call(u32, usize),
     Closure(u32, usize),
+    ClassDef(u32, usize),
+    MethodDef(u32, usize),
+    Inherit(u32),
 
     //Helpers
     StackPop,
@@ -439,6 +476,8 @@ pub enum OpCode {
     NilVal,
     NoOp,
     PrintStackTrace,
+
+
 }
 
 macro_rules! binary_op {
@@ -536,7 +575,7 @@ impl<T: SystemCalls> VM<T> {
         let mut i  = 0;
         loop {
             if i%40 == 0 {
-                gc.collect_free(self);
+                // gc.collect_free(self);
             }
             i += 1;
             //TODO: handle debugging
@@ -549,11 +588,9 @@ impl<T: SystemCalls> VM<T> {
             // println!("exec: {:?}", self.frames.last_mut().unwrap().func.chunks[ip]);
             match self.frames.last_mut().unwrap().func.chunks[ip] {
                 Constant(pos) => {
-                    // println!("const: {:?}", self.constant_pool[pos]);
                 // this will create new copies everytime. think over
                 self.push_stack(self.constant_pool[pos].clone(&gc))},
                 Exit(_) => {
-                    // println!("{:?}", self.stack);
                     return Ok(())
                 },
                 Negate(line_no) => {
@@ -592,10 +629,10 @@ impl<T: SystemCalls> VM<T> {
                 StackPop => {self.pop_stack(gc);},
                 DefineGlobal(line_no, pos) => {
                     let name = self.constant_pool[pos].to_string();
-                    if let Some(val) = self.pop_stack(gc) {
+                    if let Some(val) = self.stack.last() {
                         self.globals.insert(name, val.clone(&gc));
                     } else {
-                        return Err(LoxError::RuntimeError("gg".to_string(),line_no,"".to_string()))
+                        return Err(LoxError::RuntimeError("dg".to_string(),line_no,"".to_string()))
                     }
                 }
                 GetGlobal(line_no, pos) => {
@@ -618,37 +655,67 @@ impl<T: SystemCalls> VM<T> {
                         return Err(LoxError::RuntimeError("gg".to_string(),line_no,"".to_string()))
                     }
                 }
-                GetLocal(_, pos) => {
+                GetLocal(line_no, pos) => {
+                    // println!("{} {} stacktrace: {}", self.frames.last_mut().unwrap().slot , pos, PrintVec(self.stack.clone(&gc)));
                     if let Some(val) = self.stack.get(self.frames.last_mut().unwrap().slot + pos) {
                         self.push_stack(val.clone(&gc));
                     } else {
-                        return Err(LoxError::RuntimeError("gl".to_string(),0,"".to_string()))
+                        return Err(LoxError::RuntimeError("gl".to_string(),line_no,"".to_string()))
                     }
                 }
-                SetLocal(_, pos) => {
+                SetLocal(line_no, pos) => {
                     if let Some(val) = self.stack.last() {
                         self.stack[self.frames.last_mut().unwrap().slot + pos] = val.clone(&gc);
                     } else {
-                        return Err(LoxError::RuntimeError("sl".to_string(),0,"".to_string()))
+                        return Err(LoxError::RuntimeError("sl".to_string(),line_no,"".to_string()))
                     }
                 }
-                SetUpvalue(_, pos) => {
+                GetProperty(line_no, pos) => {
+                    // println!("stacktrace: {}", PrintVec(self.stack.clone(&gc)));
+                    if let Some(Object::InstanceDef(inst) )= self.pop_stack(gc) {
+                        // TODO: String/identifier check
+                        let prop = self.constant_pool[pos].to_string();
+                        if let Some(field) = inst.get(&prop, gc) {
+                            self.push_stack(field);
+                        } else if self.bind_method(&inst, &inst.class, &prop, gc).is_ok() {
+
+                        } else {
+                            return Err(LoxError::RuntimeError("gp".to_string(),line_no,"".to_string()))
+                        }
+                    } else {
+                        return Err(LoxError::RuntimeError("gp".to_string(),line_no,"".to_string()))
+                    }
+                }
+                SetProperty(line_no, pos) => {
+                    
+                    let val = self.pop_stack(gc).unwrap();
+                    if let Some(Object::InstanceDef(inst) )= &self.stack.last() {
+                        // TODO: String/identifier check
+                        let prop = self.constant_pool[pos].to_string();
+                        inst.set(prop, val.clone(gc));
+                        self.pop_stack(gc);
+                        self.push_stack(val);
+                    } else {
+                        return Err(LoxError::RuntimeError("sp".to_string(),line_no,"".to_string()))
+                    }
+                }
+                SetUpvalue(line_no, pos) => {
                     if let Some(val) = self.stack.last() {
                         let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone(&gc).get(&gc);
                         match x {
                             UpValue::Open(up_pos) => {
                                 self.stack[up_pos] = val.clone(&gc);
                             },
-                            UpValue::Closed(_) => {
+                            UpValue::Closed(line_no) => {
                                 self.frames.last().unwrap().func.upvalues_ref.borrow_mut()[pos].update(UpValue::Closed(val.clone(&gc)));
                             }
                             _ => {}
                         }
                     } else {
-                        return Err(LoxError::RuntimeError("su".to_string(),0,"".to_string()))
+                        return Err(LoxError::RuntimeError("su".to_string(),line_no,"".to_string()))
                     } 
                 }
-                GetUpvalue(_, pos) => {
+                GetUpvalue(line_no, pos) => {
                     // use std::borrow::Borrow; 
                     // let x = self.frames.last().unwrap().func.upvalues_ref.borrow().get(pos).unwrap().clone(&gc).borrow();
                     // let x = &*x.get(pos).unwrap().borrow();
@@ -664,27 +731,31 @@ impl<T: SystemCalls> VM<T> {
                         _ => {}
                     }
                 }
-                JumpIfFalse(_, offset) => {
+                JumpIfFalse(line_no, offset) => {
                     if let Some(Object::Bool(false)) = self.stack.last() {
                         self.frames.last_mut().unwrap().ip = offset;
                     } else if let Some(Object::Bool(true)) = self.stack.last() {
                         
                     } else {
-                        return Err(LoxError::RuntimeError("jif".to_string(),0,"".to_string()))
+                        return Err(LoxError::RuntimeError("jif".to_string(),line_no,"".to_string()))
                     }
                 }
-                Jump(_, offset) => {
+                Jump(line_no, offset) => {
                     self.frames.last_mut().unwrap().ip = offset;
                 }
-                Call(_, args_count) => {
-                    // TODO: args count check
-                    let stack_len = self.stack.len()-args_count;
+                Call(line_no, args_count) => {
+                    // println!("stacktrace: {}", PrintVec(self.stack.clone(&gc)));
+                    let stack_len = self.stack.len()-args_count-1;
                     // let frame = self.frames.last().unwrap();
-                    if let Object::Closure(func) = &self.stack[stack_len - 1] {
+                    if let Object::Closure(func) = &self.stack[stack_len] {
+                        if func.arity != args_count as u32 {
+                            return Err(LoxError::RuntimeError("arg cnt fn".to_string(),0,"".to_string()));
+                        }
                         self.frames.push(CallFrame::new(gc.clone_unique_root(func),0,stack_len));
                         // println!("upvals {:?}: {:?}", func.name, func.upvalues);
                         // println!("open upvals {:?}: {:?}", func.name, self.open_upvalues);
-                    } else if let Object::NativeFunction(func) = self.stack[stack_len - 1].clone(&gc) {
+                    } else if let Object::NativeFunction(func) = self.stack[stack_len].clone(&gc) {
+                        // TODO: args count check
                         let ret_val = func(self.to_vec(&self.stack[stack_len..(stack_len+args_count)], gc));
   
                         for _ in 0..(args_count) {
@@ -692,15 +763,38 @@ impl<T: SystemCalls> VM<T> {
                         }
                         
                         self.stack.push(ret_val);
+                    } else if let Object::ClassDef(val) = &self.stack[stack_len] {
+                        let mut init = None;
+                        // println!("arg {} {}", val.name, args_count);
+                        if let Some(Object::Closure(initializer)) = val.get_method(&String::from("init"), gc) {
+                            if initializer.arity != args_count as u32 {
+                                return Err(LoxError::RuntimeError("arg cnt cl".to_string(),0,"".to_string()));
+                            }
+                            init = Some(initializer);
+                        } else if args_count != 0 {
+                            return Err(LoxError::RuntimeError("arg cnt cli".to_string(),0,"".to_string()));
+                        }
+                        self.replace_top_stack(Object::InstanceDef(gc.get_root(Instance::new(val.clone(gc)))), args_count);
+                        if let Some(func) = &init {
+                            // TODO: Args are not parsed
+                            self.frames.push(CallFrame::new(gc.clone_unique_root(func),0,stack_len));
+                        }
+                        // TODO: arg count should be zero here
+                    } else if let Object::InstanceBindDef(val) = &self.stack[stack_len] {
+                        if val.method.arity != args_count as u32 {
+                            return Err(LoxError::RuntimeError("arg cnt idef".to_string(),0,"".to_string()));
+                        }
+                        self.frames.push(CallFrame::new(gc.clone_unique_root(&val.method),0,stack_len));
+                        self.replace_top_stack(val.receiver.clone(gc), args_count);
                     } else {
-                        return Err(LoxError::RuntimeError("c".to_string(),0,"".to_string()))
+                        return Err(LoxError::RuntimeError("call".to_string(),0,"".to_string()))
                     }
                 }
-                Closure(_, pos) => {
+                Closure(line_no, pos) => {
                     if let Object::Closure(func) = self.constant_pool[pos].clone(&gc) {
+                        
                         for up_val in func.upvalues.iter() {
                             let (index, is_local) = &up_val;
-                            // println!("{:?} {} {}", func.name, self.stack[self.frames.last().unwrap().slot + index], is_local);
                             if *is_local {
                                 // println!("up open {:?} {:?}", func.name, self.frames.last().unwrap().slot + index);
                                 // check first if an upvalue thing exists already for this particular local. if yes, don't add the following.
@@ -711,10 +805,11 @@ impl<T: SystemCalls> VM<T> {
                             }
                         }
                         self.push_stack(Object::Closure(func));
+                    } else {
+                        return Err(LoxError::RuntimeError("cls".to_string(),0,"".to_string()))
                     }
                 }
-                Return(_) => {
-                    // println!("upvals: {:?}", self.open_upvalues);
+                Return(line_no) => {
                     //TODO: use slots here
                     let val = self.pop_stack(gc).unwrap();
                     // TODO: static size stacks, we can just change index instead of actually popping
@@ -732,8 +827,7 @@ impl<T: SystemCalls> VM<T> {
                     }
                     
                     //removing the function object
-                    self.pop_stack(gc);
-
+                    // self.pop_stack(gc);
                     self.frames.pop();
                     self.push_stack(val);
                 },
@@ -753,11 +847,52 @@ impl<T: SystemCalls> VM<T> {
                     // }
                     let frame_base = self.frames.last().unwrap().slot;
                     let i = self.stack.len()-1;
+                    // println!("cup stacktrace: {} {}", PrintVec(self.stack.clone(&gc)), i);
                     self.close_value(i, gc);
                     self.pop_stack(gc);
                 },
                 PrintStackTrace => {
                     println!("stacktrace: {}", PrintVec(self.stack.clone(&gc)));
+                },
+                ClassDef(line_no, pos) => {
+                    let name = self.constant_pool[pos].to_string();
+                    self.push_stack(Object::ClassDef(gc.get_root(Class::new(name))))
+                }
+                MethodDef(line_no, pos) => {
+                    let method = self.pop_stack(gc).unwrap();
+                    if let Object::ClassDef(class) = self.stack.last().unwrap().clone(gc) {
+                        // println!("mdef: {:?}", class.name);
+                        let prop = self.constant_pool[pos].to_string();
+                        class.set_method(prop, method);
+                    } else {
+                        return Err(LoxError::RuntimeError("mdef".to_string(),line_no,"".to_string()));
+                    }
+                }
+                Inherit(line_no) => {
+                    if let Some(Object::ClassDef(child_class)) = self.pop_stack(gc) {
+                        if let Some(Object::ClassDef(super_class)) = self.stack.last(){
+                            child_class.add_super_class(&super_class, gc);
+                        } else {
+                            return Err(LoxError::RuntimeError("inh".to_string(),line_no,"".to_string()));
+                        }
+                    } else {
+                        return Err(LoxError::RuntimeError("inh".to_string(),line_no,"".to_string()));
+                    }
+                }
+                GetSuper(line_no, pos) => {
+                    //TODO: actually check if it's a string
+                    let name = self.constant_pool[pos].to_string();
+                    if let Some(Object::ClassDef(super_class)) =  self.pop_stack(gc){
+                        if let Some(Object::InstanceDef(inst)) =  self.pop_stack(gc) {
+                            // if self.globals.insert(name, val.clone(&gc)).is_none() {
+                            //     return Err(LoxError::RuntimeError("unknown".to_string(),line_no,"".to_string()))
+                            // }
+                            self.bind_method(&inst, &super_class, &name, gc)?;
+                            // break;
+                        }
+                    } else {
+                        return Err(LoxError::RuntimeError("gsup".to_string(),line_no,"".to_string()))
+                    }
                 }
             };
         }
@@ -795,6 +930,11 @@ impl<T: SystemCalls> VM<T> {
         self.sp +=1;
         self.stack.push(val);
     }
+    
+    pub fn replace_top_stack(&mut self, val: Object, pos: usize) {
+        let len = self.stack.len();
+        self.stack[len - pos - 1] = val;
+    }
 
     pub fn pop_stack(&mut self, gc: &Heap) -> Option<Object> {
         if self.sp == 0 {
@@ -819,5 +959,15 @@ impl<T: SystemCalls> VM<T> {
         let y = x.clone(&gc);
         self.open_upvalues.borrow_mut().push(y);
         x
+    }
+
+    fn bind_method(&mut self, inst: &Root<Instance>, class: &Root<Class>, prop: &String, gc: &Heap) -> Result<(), LoxError> {
+        if let Some(Object::Closure(method)) =  class.get_method(prop, gc) {   
+            let bound = InstanceBoundMethod::new(Object::InstanceDef(gc.clone_root(inst)), method);
+            self.push_stack(Object::InstanceBindDef(gc.get_root(bound)));
+            Ok(())
+        } else {
+            Err(LoxError::RuntimeError("bm".to_string(),0,"".to_string()))
+        }
     }
 }

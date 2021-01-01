@@ -1,4 +1,4 @@
-use std::{cell::{Cell, RefCell}, ptr::NonNull};
+use std::{cell::{Cell, RefCell}, ptr::NonNull, fmt::Debug};
 
 use crate::{chunk::VM, system_calls::SystemCalls};
 
@@ -13,28 +13,28 @@ impl Heap {
             mem: RefCell::new(vec![])
         }
     }
-    fn allocate<T: 'static + Trace + CustomClone>(&self, val: T) -> NonNull<Blob<T>>{
+    fn allocate<T: 'static + Trace + CustomClone + Debug>(&self, val: T) -> NonNull<Blob<T>>{
         let mut alloc: Box<Blob<T>> = Box::new(Blob::new(val));
         let ptr = unsafe {NonNull::new_unchecked(&mut *alloc)};
         self.mem.borrow_mut().push(alloc);
         ptr
     } 
-    pub fn get_root<T: 'static + Trace + CustomClone>(&self, val: T) -> Root<T> {
+    pub fn get_root<T: 'static + Trace + CustomClone + Debug>(&self, val: T) -> Root<T> {
         Root{
             data: self.allocate(val)
         }
     }
-    pub fn get_unique_root<T: 'static + Trace + CustomClone>(&self, val: T) -> UniqueRoot<T> {
+    pub fn get_unique_root<T: 'static + Trace + CustomClone + Debug>(&self, val: T) -> UniqueRoot<T> {
         UniqueRoot{
             data: self.allocate(val)
         }
     }
-    pub fn clone_root<T: 'static + Trace + CustomClone>(&self, val: &Root<T>) -> Root<T> {
+    pub fn clone_root<T: 'static + Trace + CustomClone + Debug>(&self, val: &Root<T>) -> Root<T> {
         Root {
             data: val.data
         }
     }
-    pub fn clone_unique_root<T: 'static + Trace + CustomClone>(&self, val: &UniqueRoot<T>) -> UniqueRoot<T> {
+    pub fn clone_unique_root<T: 'static + Trace + CustomClone + Debug>(&self, val: &UniqueRoot<T>) -> UniqueRoot<T> {
         UniqueRoot{ 
             data: self.allocate(unsafe{val.data.as_ref().data.clone(self)})
         }

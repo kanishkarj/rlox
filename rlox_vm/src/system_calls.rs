@@ -34,7 +34,11 @@ impl SystemCalls for SystemInterface {
 
 impl SystemCalls for SystemInterfaceMock {
     fn print(&mut self, arg: &Object, gc: &Heap) {
-        self.print_cache.borrow_mut().push(arg.clone(gc));
+        match arg {
+            Object::ClassDef(val) => self.print_cache.borrow_mut().push(Object::Str(val.name.clone())),
+            Object::InstanceDef(val) => self.print_cache.borrow_mut().push(Object::Str(val.name.clone())),
+            _ => self.print_cache.borrow_mut().push(arg.clone(gc)),
+        };
     }
 
     fn time(&mut self) -> Result<Object, LoxError> {

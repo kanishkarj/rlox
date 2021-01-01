@@ -107,3 +107,36 @@
 // var mid = outer();
 // var in = mid();
 // in();
+class Doughnut {
+  cook() {
+    print "Dunk in the fryer.";
+    this.finish("sprinkles");
+  }
+
+  finish(ingredient) {
+    print "Finish with " + ingredient;
+  }
+}
+
+class Cruller < Doughnut {
+  finish(ingredient) {
+    // stacktrace;
+    // No sprinkles, always icing.
+    super.finish("icing");
+  }
+}
+
+var x = Cruller();
+// x.cook();
+x.finish("hello");
+
+
+// scp: "this" [[{"Foo": true}, {"this": true}], [{}, {"closure": true}], [{}, {}]]
+// scp: "ths" [[{}, {"getClosure": true}], [{}, {"closure": true, "ths": true}], [{}, {}]]
+// fun add(a, b) {
+//     stacktrace;
+//     return a + b ;
+// }
+
+// print add(1, 4);
+// stacktrace;

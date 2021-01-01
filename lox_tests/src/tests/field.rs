@@ -188,7 +188,7 @@ use super::*;
             test_fail!(
                 set_evaluation_order,
                 ".././test-scripts/field/set_evaluation_order.lox",
-                LoxError::RuntimeError(String::from("undefined1"), 1, String::from(""))
+                LoxError::SemanticError(String::from("undefined1"), 1, String::from(""))
             );
 
             

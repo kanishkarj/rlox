@@ -13,6 +13,11 @@ use rlox_core::frontend::definitions::token::Token;
 
 // handle break/continue at resolve
 // static fields maybe
+//////
+// Handle mutual local recursion. This one is weird
+// make this into a chain of resolvers, with different purpose and static checks etc.
+//////
+
 
 pub struct Resolver {
     // bool corresponds to if the value has been initialized
@@ -38,11 +43,11 @@ impl Resolver {
     }
 
     fn resolve_local(&mut self, name: &mut Token) -> Result<(), LoxError> {
+        // println!("scp: {:?} {:?}", name.lexeme, self.fn_scopes);
         for (i, scopes) in self.fn_scopes.iter().enumerate().rev() {
             for (_, scope) in scopes.iter().enumerate().rev() {
                 if scope.contains_key(&name.lexeme) {
                     name.scope = Some(self.fn_scopes.len() - 1 - i);
-                    // println!("resolver {:?} {:?}", name, self.fn_scopes);
                     return Ok(());
                 }
             }
@@ -98,6 +103,16 @@ impl Resolver {
 
     fn resolve_function(&mut self, func: &mut Function, dec: FunctionType) -> Result<(), LoxError> {
         self.begin_fn_scope();
+
+        if dec == FunctionType::METHOD || dec == FunctionType::INITIALIZER {
+            self.fn_scopes
+                .last_mut()
+                .unwrap()
+                .last_mut()
+                .unwrap()
+                .insert("this".to_string(), true);
+        }
+
         let currfn = self.curr_function;
         self.curr_function = dec;
 
@@ -136,7 +151,7 @@ impl VisitorMut<()> for Resolver {
 
     fn visit_call_expr(&mut self, val: &mut Call) -> Result<(), LoxError> {
         // This is so that recursion and stuff works in peace
-        // self.resolve(&mut val.callee)?;
+        self.resolve(&mut val.callee)?;
         for arg in &mut val.arguments {
             self.resolve(arg)?;
         }
@@ -332,12 +347,6 @@ impl VisitorMut<()> for Resolver {
         }
 
         self.begin_scope();
-        self.fn_scopes
-            .last_mut()
-            .unwrap()
-            .last_mut()
-            .unwrap()
-            .insert("this".to_string(), true);
         for method in &mut val.methods {
             let dec = if method.name.lexeme == "init".to_string() {
                 FunctionType::INITIALIZER

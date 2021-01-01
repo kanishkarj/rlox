@@ -19,7 +19,7 @@ use std::collections::HashMap;
                 test_succeed!(
                     test_394,
                     ".././test-scripts/regression/394.lox",
-                    LoxClass::new(String::from("B"), Rc::new(HashMap::new()), None)
+                    Class::new(String::from("B"))
                 );
 
                 

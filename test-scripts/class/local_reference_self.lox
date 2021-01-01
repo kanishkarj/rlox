@@ -4,6 +4,5 @@
       return Foo;
     }
   }
-
   print Foo().returnSelf(); // expect: Foo
 }

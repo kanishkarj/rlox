@@ -14,13 +14,14 @@ use std::rc::Rc;
 // use rlox_core::runtime::definitions::object::Object;
 use rlox_core::error::LoxError;
 use super::*;
-use rlox_core::runtime::definitions::lox_class::{LoxClass, LoxInstance};
+use rlox_vm::class::Class;
+use rlox_vm::instance::Instance;
 use std::collections::HashMap;
 
 test_succeed!(
     empty,
     "../test-scripts/class/empty.lox",
-    LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None)
+    Class::new(String::from("Foo"))
 );
 
 test_fail!(
@@ -40,7 +41,7 @@ test_succeed!(
 test_succeed!(
     local_inherit_other,
     "../test-scripts/class/local_inherit_other.lox",
-    LoxClass::new(String::from("B"), Rc::new(HashMap::new()), None)
+    Class::new(String::from("B"))
 );
 
 test_fail!(
@@ -52,11 +53,11 @@ test_fail!(
 test_succeed!(
     local_reference_self,
     "../test-scripts/class/local_reference_self.lox",
-    LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None)
+    Class::new(String::from("Foo"))
 );
 
 test_succeed!(
     reference_self,
     "../test-scripts/class/reference_self.lox",
-    LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None)
+    Class::new(String::from("Foo"))
 );

@@ -2,7 +2,9 @@ class A {}
 
 fun f() {
   class B < A {}
+  stacktrace;
   return B;
 }
 
 print f(); // expect: B
+stacktrace;

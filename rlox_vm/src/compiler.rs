@@ -40,7 +40,6 @@ fn run<T: SystemCalls, S: AsRef<str>>(script: S, sys_interface: T) -> Result<(),
     ast.accept(&mut comp)?;
     comp.curr_fn_mut().chunks.push(OpCode::Exit(0));
     println!("{:?}", comp.curr_fn().chunks);
-    println!("hello");
     let curr_fn = comp.curr_fn().clone(&gc);
     let cons_pl = comp.constant_pool;
     let mut vm = VM::new(sys_interface, cons_pl, curr_fn, &gc);
@@ -90,7 +89,6 @@ impl<'a> Compiler<'a> {
         let mut x = self.resolve_local(token);
         if x == -1 {
             x = self.resolve_upvalue(token);
-            // println!("{:?} {} {:?} {}", self.curr_fn().name, token.lexeme ,token.scope, x);
             if x != -1 {
                 self.curr_fn_mut().chunks.push(OpCode::GetUpvalue(token.line_no, x as usize));
             } else {
@@ -147,11 +145,10 @@ impl<'a> Compiler<'a> {
         if n < 2 {
             return -1;
         }
-
-        
         if let Some(mut scope) = token.scope {
             scope = n - scope;
             let mut upval = -1;
+            // println!("upvl {}: {:?}", token.lexeme, self.scoped_fns[scope-1].locals);
             for j in (0..self.scoped_fns[scope-1].locals.len()).rev() {
                 if self.scoped_fns[scope-1].locals[j].name.lexeme == token.lexeme {
                     self.scoped_fns[scope-1].locals[j].is_closed = true;
@@ -168,6 +165,35 @@ impl<'a> Compiler<'a> {
         }
 
         return -1;
+    }
+
+    fn parse_function(&mut self, val: &Function, fn_type: FunctionType) -> Result<(), LoxError> {
+        self.scoped_fns.push(FuncSpec::new(0, Some(val.name.lexeme.clone()), fn_type.clone()));
+        // println!("lscp: {:?}", self.scoped_fns.last());
+        self.begin_scope();
+        
+        self.curr_fn_mut().arity = val.params.len() as u32;
+        for param in &val.params {
+            self.declare_variable(&param)?;
+        }
+        val.body.accept(self)?;
+        
+        if let FunctionType::INIT = fn_type {
+            self.curr_fn_mut().chunks.push(OpCode::GetLocal(0, 0));
+        } else {
+            self.curr_fn_mut().chunks.push(OpCode::NilVal);
+        }
+        self.curr_fn_mut().chunks.push(OpCode::Return(val.name.line_no));
+
+        self.end_scope();
+
+        // original new func
+        let new_func = self.scoped_fns.pop().unwrap();
+        let func_root = self.gc.get_unique_root(new_func);
+        let y = self.add_const(Object::Closure(func_root));
+        
+        self.curr_fn_mut().chunks.push(OpCode::Closure(val.name.line_no, y));
+        Ok(())
     }
 }
 
@@ -236,11 +262,20 @@ impl<'a> Visitor<()> for Compiler<'a> {
     }
 
     fn visit_get_expr(&mut self, val: &Get) -> Result<(), LoxError> {
-        todo!();
+        val.object.accept(self)?;
+        
+        let x = self.add_const(Object::Str(val.name.lexeme.clone())) as i32;
+        self.curr_fn_mut().chunks.push(OpCode::GetProperty(val.name.line_no, x as usize));
+        Ok(())
     }
 
     fn visit_set_expr(&mut self, val: &Set) -> Result<(), LoxError> {
-        todo!();
+        val.object.accept(self)?;
+        
+        let x = self.add_const(Object::Str(val.name.lexeme.clone())) as i32;
+        val.value.accept(self)?;
+        self.curr_fn_mut().chunks.push(OpCode::SetProperty(val.name.line_no, x as usize));
+        Ok(())
     }
 
     fn visit_lambda_expr(&mut self, val: &Lambda) -> Result<(), LoxError> {
@@ -248,11 +283,16 @@ impl<'a> Visitor<()> for Compiler<'a> {
     }
 
     fn visit_this_expr(&mut self, val: &This) -> Result<(), LoxError> {
-        todo!();
+        self.named_variable(&val.keyword);
+        Ok(())
     }
 
     fn visit_super_expr(&mut self, val: &Super) -> Result<(), LoxError> {
-        todo!();
+        let x = self.add_const(Object::Str(val.method.lexeme.clone())) as i32;
+        self.named_variable(&Token::new(TokenType::THIS, 0, None, String::from("this")));
+        self.named_variable(&val.keyword);
+        self.curr_fn_mut().chunks.push(OpCode::GetSuper(val.keyword.line_no, x as usize));
+        Ok(())
     }
 
     fn visit_expression_stmt(&mut self, val: &Expression) -> Result<(), LoxError> {
@@ -285,7 +325,8 @@ impl<'a> Visitor<()> for Compiler<'a> {
         
         let x = self.add_const(Object::Str(val.name.lexeme.clone()));
         self.curr_fn_mut().chunks.push(OpCode::DefineGlobal(val.name.line_no, x));
-
+        self.curr_fn_mut().chunks.push(OpCode::StackPop);
+        self.curr_fn_mut().chunks.push(OpCode::StackPop);
         Ok(())
     }
 
@@ -294,7 +335,6 @@ impl<'a> Visitor<()> for Compiler<'a> {
 
         let mut x = self.resolve_local(&val.name);
         if x == -1 {
-
             x = self.resolve_upvalue(&val.name);
             if x != -1 {
                 self.curr_fn_mut().chunks.push(OpCode::SetUpvalue(val.name.line_no, x as usize));
@@ -368,36 +408,11 @@ impl<'a> Visitor<()> for Compiler<'a> {
     }
 
     fn visit_function_stmt(&mut self, val: &Function) -> Result<(), LoxError> {
-        self.scoped_fns.push(FuncSpec::new(0, Some(val.name.lexeme.clone()), FunctionType::FUNCTION));
-        self.begin_scope();
-        
-        self.curr_fn_mut().arity = val.params.len() as u32;
-        for param in &val.params {
-            self.declare_variable(&param)?;
-        }
-
-        val.body.accept(self)?;
-        
-        self.curr_fn_mut().chunks.push(OpCode::NilVal);
-        self.curr_fn_mut().chunks.push(OpCode::Return(val.name.line_no));
-
-        self.end_scope();
-
-        // original new func
-        let new_func = self.scoped_fns.pop().unwrap();
-        // println!("name:{:?} ||| upvals:{:?}", new_func.name, new_func.upvalues);
-        // println!("fn: {:?}", new_func);
-        // self.declare_variable(&val.name)?;
-        // if self.curr_fn().scope_depth > 0 {return Ok(())}
-        
-        // let x = self.add_const(Object::Str(val.name.lexeme.clone()));
-        let func_root = self.gc.get_unique_root(new_func);
-        let y = self.add_const(Object::Closure(func_root));
-        // self.curr_fn_mut().chunks.push(OpCode::Constant(y));
-        self.curr_fn_mut().chunks.push(OpCode::Closure(val.name.line_no, y));
-        //self.curr_fn_mut().chunks.push(OpCode::DefineGlobal(val.name.line_no, x));
         self.declare_variable(&val.name)?;
-        println!("{}", self.curr_fn().scope_depth);
+        // original new func
+        self.parse_function(val, FunctionType::FUNCTION)?;
+        
+        // println!("{}", self.curr_fn().scope_depth);
         if self.curr_fn().scope_depth > 0 {return Ok(())}
         
         let x = self.add_const(Object::Str(val.name.lexeme.clone()));
@@ -408,18 +423,66 @@ impl<'a> Visitor<()> for Compiler<'a> {
     }
 
     fn visit_return_stmt(&mut self, val: &Return) -> Result<(), LoxError> {
-        if let Some(vl) = &val.value {
+        if let FunctionType::INIT = self.curr_fn().fn_type {
+            if val.value.is_some() {
+                return Err(LoxError::RuntimeError(String::from("cannot return from init"), 0, String::from("")));
+            }
+            self.curr_fn_mut().chunks.push(OpCode::GetLocal(0, 0));
+        } else if let Some(vl) = &val.value {
             vl.accept(self)?;
-            self.curr_fn_mut().chunks.push(OpCode::Return(val.keyword.line_no));
         } else {
             self.curr_fn_mut().chunks.push(OpCode::NilVal);
-            self.curr_fn_mut().chunks.push(OpCode::Return(val.keyword.line_no));
         }
+        self.curr_fn_mut().chunks.push(OpCode::Return(val.keyword.line_no));
         Ok(())
     }
 
     fn visit_class_stmt(&mut self, val: &Class) -> Result<(), LoxError> {
-        todo!();
+        // TODO: Handle global declarations also inside the declare_variable() thing
+        let x = self.add_const(Object::Str(val.name.lexeme.clone()));
+
+        self.curr_fn_mut().chunks.push(OpCode::ClassDef(val.name.line_no, x));
+        
+        self.declare_variable(&val.name)?;
+                
+        if self.curr_fn().scope_depth == 0 {
+            self.curr_fn_mut().chunks.push(OpCode::DefineGlobal(val.name.line_no, x));
+            self.curr_fn_mut().chunks.push(OpCode::StackPop);
+        }
+
+        if let Some(super_class) = &val.superclass {
+            self.begin_scope();
+            
+            self.declare_variable(&Token::new(TokenType::SUPER, 0, None, String::from("super")))?;
+            self.named_variable(&super_class.name);
+            
+            self.named_variable(&val.name);
+            self.curr_fn_mut().chunks.push(OpCode::Inherit(super_class.name.line_no));
+        }
+        
+        self.named_variable(&val.name);
+
+        for method in &val.methods {
+            let y = self.add_const(Object::Str(method.name.lexeme.clone()));
+            // println!("fns {:?} {:?}", val.name.lexeme, val.name.lexeme == String::from("init"));
+            if method.name.lexeme == String::from("init") {
+                self.parse_function(method, FunctionType::INIT)?;
+            } else {
+                self.parse_function(method, FunctionType::METHOD)?;
+            }
+            self.curr_fn_mut().chunks.push(OpCode::MethodDef(method.name.line_no, y));
+        }
+        self.curr_fn_mut().chunks.push(OpCode::StackPop);
+        if val.superclass.is_some() {
+            self.end_scope();
+        }
+        
+        if self.curr_fn().scope_depth == 0 {
+            // self.curr_fn_mut().chunks.push(OpCode::StackPop);
+        }
+
+
+        Ok(())
     }
 
     fn visit_stack_trace_stmt(&mut self) -> Result<(), LoxError> {

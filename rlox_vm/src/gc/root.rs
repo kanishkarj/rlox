@@ -4,6 +4,7 @@ use std::ptr::NonNull;
 use crate::chunk::{CallFrame, FuncSpec, Object, UpValue, UpValueWrap};
 
 use super::heap::Heap;
+use std::fmt::Debug;
 
 pub trait MemoryBlob {
     fn mark(&mut self);
@@ -12,25 +13,25 @@ pub trait MemoryBlob {
 }
 
 #[derive(Clone)]
-pub struct Blob<T: Trace + Sized + CustomClone> {
+pub struct Blob<T: Trace + Sized + CustomClone + Debug> {
     pub data: T,
     is_marked: Cell<bool>
 }
 
-impl<T: Trace + Sized + CustomClone> Deref for Blob<T> {
+impl<T: Trace + Sized + CustomClone + Debug> Deref for Blob<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        unsafe{&self.data}
+        &self.data
     }
 }
 
-impl<T: Trace + Sized + CustomClone> DerefMut for Blob<T> {
+impl<T: Trace + Sized + CustomClone + Debug> DerefMut for Blob<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe{&mut self.data}
+        &mut self.data
     }
 }
-impl<T: Trace + CustomClone> MemoryBlob for Blob<T> {
+impl<T: Trace + CustomClone + Debug> MemoryBlob for Blob<T> {
     fn mark(&mut self) {
         self.is_marked.replace(true);
     }
@@ -42,7 +43,7 @@ impl<T: Trace + CustomClone> MemoryBlob for Blob<T> {
     }
 }
 
-impl<T: Trace + Sized + CustomClone> Blob<T> {
+impl<T: Trace + Sized + CustomClone + Debug> Blob<T> {
     pub fn new(val: T) -> Self {
         Blob {
             data: val,
@@ -51,18 +52,18 @@ impl<T: Trace + Sized + CustomClone> Blob<T> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Root<T: Trace + Sized + CustomClone> {
+#[derive(Clone)]
+pub struct Root<T: Trace + Sized + CustomClone + Debug> {
     pub(crate) data: NonNull<Blob<T>>
 }
 
-impl <T: Default + Trace + Sized + CustomClone> Default for Root<T> {
+impl <T: Default + Trace + Sized + CustomClone + Debug> Default for Root<T> {
     fn default() -> Self {
         todo!()
     }
 }
 
-impl<T: Trace + Sized + CustomClone> Deref for Root<T> {
+impl<T: Trace + Sized + CustomClone + Debug> Deref for Root<T> {
     type Target = Blob<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -70,23 +71,22 @@ impl<T: Trace + Sized + CustomClone> Deref for Root<T> {
     }
 }
 
-impl<T: Trace + Sized + CustomClone> DerefMut for Root<T> {
+impl<T: Trace + Sized + CustomClone + Debug> DerefMut for Root<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe{self.data.as_mut()}
     }
 }
-#[derive(Debug)]
-pub struct UniqueRoot<T: Trace + Sized + CustomClone> {
+pub struct UniqueRoot<T: Trace + Sized + CustomClone + Debug> {
     pub(crate) data: NonNull<Blob<T>>
 }
 
-impl <T: Default + Trace + Sized + CustomClone> Default for UniqueRoot<T> {
+impl <T: Default + Trace + Sized + CustomClone + Debug> Default for UniqueRoot<T> {
     fn default() -> Self {
         todo!()
     }
 }
 
-impl<T: Trace + Sized + CustomClone> Deref for UniqueRoot<T> {
+impl<T: Trace + Sized + CustomClone + Debug> Deref for UniqueRoot<T> {
     type Target = Blob<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -94,7 +94,7 @@ impl<T: Trace + Sized + CustomClone> Deref for UniqueRoot<T> {
     }
 }
 
-impl<T: Trace + Sized + CustomClone> DerefMut for UniqueRoot<T> {
+impl<T: Trace + Sized + CustomClone + Debug> DerefMut for UniqueRoot<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe{self.data.as_mut()}
     }
@@ -116,11 +116,14 @@ impl Trace for Object {
             Object::Closure(val) => {
                 val.trace()
             }
+            Object::ClassDef(val) => {todo!()}
+            Object::InstanceDef(val) => {todo!()}
+            Object::InstanceBindDef(val) => {todo!()}
         }
     }
 }
 
-impl<T: Trace + Sized + CustomClone> Trace for Root<T> {
+impl<T: Trace + Sized + CustomClone + Debug> Trace for Root<T> {
     fn trace(&mut self) {
         if self.get_is_marked() {
             return;
@@ -130,7 +133,7 @@ impl<T: Trace + Sized + CustomClone> Trace for Root<T> {
     }
 }
 
-impl<T: Trace + Sized + CustomClone> Trace for UniqueRoot<T> {
+impl<T: Trace + Sized + CustomClone + Debug> Trace for UniqueRoot<T> {
     fn trace(&mut self) {
         if self.get_is_marked() {
             return;
@@ -193,13 +196,13 @@ pub trait CustomClone {
     fn clone(&self, gc: &Heap) -> Self;
 }
 
-impl<T> CustomClone for Root<T> where T: Trace + Sized + CustomClone + 'static {
+impl<T> CustomClone for Root<T> where T: Trace + Sized + CustomClone + Debug + 'static {
     fn clone(&self, gc: &Heap) -> Self {
         gc.clone_root(self)
     }
 }
 
-impl<T> CustomClone for UniqueRoot<T> where T: Trace + Sized + CustomClone + 'static {
+impl<T> CustomClone for UniqueRoot<T> where T: Trace + Sized + CustomClone + Debug + 'static {
     fn clone(&self, gc: &Heap) -> Self {
         gc.clone_unique_root(self)
     }
@@ -231,6 +234,16 @@ impl<T> CustomClone for Vec<T> where T: CustomClone {
     }
 }
 
+impl<T> CustomClone for HashMap<String, T> where T: CustomClone {
+    fn clone(&self, gc: &Heap) -> Self {
+        let mut res = HashMap::new();
+        for (k,v) in self {
+            res.insert(k.clone(), v.clone(gc));
+        }
+        res
+    }
+}
+
 pub trait CustomVecOps {
     type R;
 
@@ -249,12 +262,25 @@ impl<T> CustomVecOps for [T] where T: CustomClone{
     }
 }
 
+impl<T: Trace + Sized + CustomClone + Debug> Debug for Root<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("Root<{:?}>", unsafe{&self.data.as_ref().data}))
+    }
+}
+
+impl<T: Trace + Sized + CustomClone + Debug> Debug for UniqueRoot<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("UniqueRoot<{:?}>", unsafe{&self.data.as_ref().data}))
+    }
+}
+
 mod tests {
     use std::cell::RefCell;
 
     use super::*;
     use super::super::heap::*;
     
+    #[derive(Debug)]
     struct Data {
         inner: u32
     }

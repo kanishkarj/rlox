@@ -27,21 +27,21 @@ use super::*;
                 test_succeed!(
                     call_init_early_return,
                     ".././test-scripts/constructor/call_init_early_return.lox",
-                    "init","init",LoxInstance::new(LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None))
+                    "init","init",Class::new(String::from("Foo"))
                 );
 
                 
                 test_succeed!(
                     call_init_explicitly,
                     ".././test-scripts/constructor/call_init_explicitly.lox",
-                    "Foo.init(one)","Foo.init(two)",LoxInstance::new(LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None)),"init"
+                    "Foo.init(one)","Foo.init(two)",Class::new(String::from("Foo")),"init"
                 );
 
                 
                 test_succeed!(
                     default,
                     ".././test-scripts/constructor/default.lox",
-                    LoxInstance::new(LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None))
+                    Class::new(String::from("Foo"))
                 );
 
                 
@@ -55,7 +55,7 @@ use super::*;
                 test_succeed!(
                     early_return,
                     ".././test-scripts/constructor/early_return.lox",
-                    "init",LoxInstance::new(LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None))
+                    "init",Class::new(String::from("Foo"))
                 );
 
                 
@@ -83,7 +83,7 @@ use super::*;
                 test_succeed!(
                     return_in_nested_function,
                     ".././test-scripts/constructor/return_in_nested_function.lox",
-                    "bar",LoxInstance::new(LoxClass::new(String::from("Foo"), Rc::new(HashMap::new()), None))
+                    "bar",Class::new(String::from("Foo"))
                 );
 
                 

@@ -69,7 +69,7 @@ test_fail!(
 test_fail!(
     undefined,
     "../test-scripts/assignment/undefined.lox",
-    LoxError::RuntimeError(String::from("unknown"),1,"".to_string())
+    LoxError::SemanticError(String::from("unknown"),1,"".to_string())
 );
 
 test_fail!(

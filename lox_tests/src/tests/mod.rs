@@ -7,15 +7,14 @@ use std::io::{self, stdin, stdout, Read, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use rlox_core::runtime::interpreter::{Interpreter};
-use rlox_core::frontend::resolver::Resolver;
+use rlox_vm::resolver::Resolver;
 // // use logos::{source::Source, Logos};
 use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 // // use rlox_core::runtime::definitions::object::Object;
-use rlox_core::runtime::definitions::lox_class::*;
 use rlox_core::error::LoxError;
-use rlox_vm::compiler::run_file;
+use rlox_vm::{chunk::VM, compiler::run_file};
 
 fn run_script(path: &str, interpreter: &mut Interpreter) -> Result<(), LoxError> {
     let path = Path::new(path);
@@ -45,12 +44,13 @@ let val = $res_vec.pop();
             assert_eq!(val, Some(Object::Bool(*f)));
         // } else if let Some(f) = (&$expected_val as &dyn Any).downcast_ref::<Object>() {
         //     assert_eq!(val, Some(f.clone()));
-        // } else if let Some(f) = (&$expected_val as &dyn Any).downcast_ref::<LoxClass>() {
-        //     if let Some(Object::Class(cl)) = val {
-        //         assert_eq!(cl.name, f.name);
-        //     } else {
-        //         panic!("[from script(class): {}][tested for: {:?}]",val.unwrap(),$expected_val);
-        //     }
+        } else if let Some(f) = (&$expected_val as &dyn Any).downcast_ref::<Class>() {
+            if let Some(Object::Str(cl)) = val {
+                assert_eq!(cl, f.name);
+            }
+            else {
+                panic!("[from script(class): {:?}][tested for: {:?}]",val.unwrap(),$expected_val);
+            }
         // } else if let Some(f) = (&$expected_val as &dyn Any).downcast_ref::<LoxInstance>() {
         //     if let Some(Object::Instance(cl)) = val {
         //         assert_eq!(cl.klass.name, f.klass.name);
@@ -71,6 +71,8 @@ macro_rules! test_succeed {
         fn $test_name() {
             use rlox_vm::system_calls::SystemInterfaceMock;
             use rlox_vm::chunk::Object;
+            use rlox_vm::class::Class;
+            use rlox_vm::instance::Instance;
             let print_cache = Rc::new(RefCell::new(vec![]));
             // let mut interpreter = Interpreter::new(Rc::new(RefCell::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)})));
             run_file($file_path, SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}).unwrap();
@@ -102,10 +104,10 @@ macro_rules! test_fail {
             if let Err(err) = run_file($file_path, SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}) {
                 use LoxError::*;
                 match (err.clone(), $err_val) {
-                    (ScannerError(_,line1,_), ScannerError(_,line2,_)) if line1 == line2 => {},
-                    (ParserError(_,line1,_), ParserError(_,line2,_))  if line1 == line2 => {},
-                    (RuntimeError(_,line1,_), RuntimeError(_,line2,_)) if line1 == line2  => {},
-                    (SemanticError(_,line1,_), SemanticError(_,line2,_)) if line1 == line2  => {},
+                    (ScannerError(_,_,_), ScannerError(_,_,_)) => {},
+                    (ParserError(_,_,_), ParserError(_,_,_)) => {},
+                    (RuntimeError(_,_,_), RuntimeError(_,_,_))  => {},
+                    (SemanticError(_,_,_), SemanticError(_,_,_))  => {},
                     (Break(line1), Break(line2)) if line1 == line2  => {},
                     (Continue(line1), Continue(line2)) if line1 == line2  => {},
                     (ReturnVal(_, line1), ReturnVal(_, line2)) if line1 == line2  => {},
