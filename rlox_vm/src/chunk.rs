@@ -339,14 +339,13 @@ impl FuncSpec{
     pub fn new(arity: u32, name: Option<String>, fn_type: FunctionType) -> Self {
         let mut locals = vec![];
         // println!("fn {:?} {:?}", name, fn_type);
-        if let FunctionType::FUNCTION = fn_type {
+        if FunctionType::FUNCTION == fn_type {
             locals.push(Local{
                 name: Token::new(TokenType::IDENTIFIER, 0, None, String::from("")),
                 depth: 0,
                 is_closed: false,
             });
-        } else if let FunctionType::SCRIPT = fn_type {
-        } else {
+        } else if fn_type == FunctionType::INIT || fn_type == FunctionType::METHOD {
             locals.push(Local{
                 name: Token::new(TokenType::IDENTIFIER, 0, None, String::from("this")),
                 depth: 0,
@@ -399,7 +398,7 @@ impl FuncSpec{
     // }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FunctionType {
     FUNCTION,
     SCRIPT,
@@ -652,7 +651,7 @@ impl<T: SystemCalls> VM<T> {
                             return Err(LoxError::RuntimeError("unknown".to_string(),line_no,"".to_string()))
                         }
                     } else {
-                        return Err(LoxError::RuntimeError("gg".to_string(),line_no,"".to_string()))
+                        return Err(LoxError::RuntimeError("sg".to_string(),line_no,"".to_string()))
                     }
                 }
                 GetLocal(line_no, pos) => {

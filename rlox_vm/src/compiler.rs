@@ -86,6 +86,7 @@ impl<'a> Compiler<'a> {
         return -1;
     }
     fn named_variable(&mut self, token: &Token) {
+        // println!("nmv: {:?}", token);
         let mut x = self.resolve_local(token);
         if x == -1 {
             x = self.resolve_upvalue(token);
@@ -289,7 +290,16 @@ impl<'a> Visitor<()> for Compiler<'a> {
 
     fn visit_super_expr(&mut self, val: &Super) -> Result<(), LoxError> {
         let x = self.add_const(Object::Str(val.method.lexeme.clone())) as i32;
-        self.named_variable(&Token::new(TokenType::THIS, 0, None, String::from("this")));
+        for lc in &self.scoped_fns {
+            println!("{:?}", lc.locals);
+        }
+        let mut this_keyword = Token::new(TokenType::THIS, 0, None, String::from("this"));
+        if let Some(x) = val.keyword.scope {
+            if x != 0 {
+                this_keyword.scope = Some(x-1);
+            }
+        }
+        self.named_variable(&this_keyword);
         self.named_variable(&val.keyword);
         self.curr_fn_mut().chunks.push(OpCode::GetSuper(val.keyword.line_no, x as usize));
         Ok(())
@@ -332,7 +342,7 @@ impl<'a> Visitor<()> for Compiler<'a> {
 
     fn visit_assign_stmt(&mut self, val: &Assign) -> Result<(), LoxError> {
         val.value.accept(self)?;
-
+        
         let mut x = self.resolve_local(&val.name);
         if x == -1 {
             x = self.resolve_upvalue(&val.name);

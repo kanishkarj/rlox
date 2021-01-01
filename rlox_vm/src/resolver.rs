@@ -214,6 +214,7 @@ impl VisitorMut<()> for Resolver {
                 "No super class as such.".to_string(),
             ));
         }
+        // self.resolve_local(&mut Token::new(TokenType::THIS, 0, None, String::from("this"))?;
         self.resolve_local(&mut val.keyword)?;
         Ok(())
     }

@@ -1,3 +1,4 @@
+
 class Base {
   toString() { return "Base"; }
 }
