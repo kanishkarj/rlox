@@ -339,7 +339,7 @@ impl FuncSpec{
     pub fn new(arity: u32, name: Option<String>, fn_type: FunctionType) -> Self {
         let mut locals = vec![];
         // println!("fn {:?} {:?}", name, fn_type);
-        if FunctionType::FUNCTION == fn_type {
+        if FunctionType::FUNCTION == fn_type || FunctionType::LAMBDA == fn_type {
             locals.push(Local{
                 name: Token::new(TokenType::IDENTIFIER, 0, None, String::from("")),
                 depth: 0,
@@ -403,7 +403,8 @@ pub enum FunctionType {
     FUNCTION,
     SCRIPT,
     METHOD,
-    INIT
+    INIT,
+    LAMBDA
 }
 
 // TODO: ensure every primitive Object is immutable

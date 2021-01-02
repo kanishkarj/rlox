@@ -42,8 +42,13 @@ let val = $res_vec.pop();
             assert_eq!(val, Some(Object::Num(*f as f64)));
         } else if let Some(f) = (&$expected_val as &dyn Any).downcast_ref::<bool>() {
             assert_eq!(val, Some(Object::Bool(*f)));
-        // } else if let Some(f) = (&$expected_val as &dyn Any).downcast_ref::<Object>() {
-        //     assert_eq!(val, Some(f.clone()));
+        } else if let Some(_f) = (&$expected_val as &dyn Any).downcast_ref::<Object>() {
+            if let Some(Object::Nil) = val {
+                
+            }
+            else {
+                panic!("[from script(class): {:?}][tested for: {:?}]",val.unwrap(),$expected_val);
+            }
         } else if let Some(f) = (&$expected_val as &dyn Any).downcast_ref::<Class>() {
             if let Some(Object::Str(cl)) = val {
                 assert_eq!(cl, f.name);
@@ -160,3 +165,5 @@ mod regression;
 mod comments;
 mod miscellaneous;
 mod break_stmt;
+mod continue_stmt;
+mod lambda;

@@ -19,28 +19,12 @@ use super::*;
                 test_succeed!(
                     and,
                     ".././test-scripts/logical_operator/and.lox",
-                    false,1,false,true,3,true,false
-                );
-
-                
-                test_succeed!(
-                    and_truth,
-                    ".././test-scripts/logical_operator/and_truth.lox",
-                    false,Object::Nil,"ok","ok","ok"
-                );
-
+                    true, false, false, false
+                );                
                 
                 test_succeed!(
                     or,
                     ".././test-scripts/logical_operator/or.lox",
-                    1,1,true,false,false,false,true
+                    true, true, true, false
                 );
-
-                
-                test_succeed!(
-                    or_truth,
-                    ".././test-scripts/logical_operator/or_truth.lox",
-                    "ok","ok",true,0,"s"
-                );
-
                 

@@ -24,6 +24,7 @@ pub struct Resolver {
     pub fn_scopes: Vec<Vec<HashMap<String, bool>>>,
     curr_class: ClassType,
     curr_function: FunctionType,
+    ignore_def_check: bool,
 }
 
 impl Resolver {
@@ -32,6 +33,7 @@ impl Resolver {
             fn_scopes: vec![vec![HashMap::new()]],
             curr_class: ClassType::NONE,
             curr_function: FunctionType::NONE,
+            ignore_def_check: false
         }
     }
 
@@ -52,7 +54,10 @@ impl Resolver {
                 }
             }
         }
-        return Err(LoxError::SemanticError(name.lexeme.clone(),name.line_no, String::from("Undefined")));
+        if !self.ignore_def_check {
+            return Err(LoxError::SemanticError(name.lexeme.clone(),name.line_no, String::from("Undefined")));
+        }
+        return Ok(())
     }
 
     // not for block scopes only lexical
@@ -151,7 +156,10 @@ impl VisitorMut<()> for Resolver {
 
     fn visit_call_expr(&mut self, val: &mut Call) -> Result<(), LoxError> {
         // This is so that recursion and stuff works in peace
+        self.ignore_def_check = true;
         self.resolve(&mut val.callee)?;
+        self.ignore_def_check = false;
+
         for arg in &mut val.arguments {
             self.resolve(arg)?;
         }

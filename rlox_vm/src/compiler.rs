@@ -53,6 +53,7 @@ struct Compiler<'a>{
     pub constant_pool: Vec<Object>,
     pub scoped_fns: Vec<FuncSpec>,
     pub gc: &'a Heap,
+    loop_start: Option<(usize, usize)>
 }
 
 impl<'a> Compiler<'a> {
@@ -60,7 +61,8 @@ impl<'a> Compiler<'a> {
         Compiler {
             constant_pool: vec![],
             scoped_fns: vec![FuncSpec::new(0, None, FunctionType::SCRIPT)],
-            gc
+            gc,
+            loop_start: None
         }
     }
     pub fn add_const(&mut self, val: Object) -> usize {
@@ -117,7 +119,7 @@ impl<'a> Compiler<'a> {
             self.curr_fn_mut().locals.pop();
         }
     }
-    fn declare_variable(&mut self, val: &Token) -> Result<(),LoxError>{
+    fn declare_variable(&mut self, val: &Token) -> Result<(),LoxError> {
         if self.curr_fn().scope_depth == 0 {return Ok(())};
         let local = Local{name: val.clone(), depth: self.curr_fn().scope_depth, is_closed: false};
         for lc in self.curr_fn().locals.iter().rev() {
@@ -280,7 +282,28 @@ impl<'a> Visitor<()> for Compiler<'a> {
     }
 
     fn visit_lambda_expr(&mut self, val: &Lambda) -> Result<(), LoxError> {
-        todo!();
+        self.scoped_fns.push(FuncSpec::new(0, None, FunctionType::LAMBDA));
+        // println!("lscp: {:?}", self.scoped_fns.last());
+        self.begin_scope();
+        
+        self.curr_fn_mut().arity = val.params.len() as u32;
+        for param in &val.params {
+            self.declare_variable(&param)?;
+        }
+        val.body.accept(self)?;
+        
+        self.curr_fn_mut().chunks.push(OpCode::NilVal);
+        self.curr_fn_mut().chunks.push(OpCode::Return(0));
+
+        self.end_scope();
+
+        // original new func
+        let new_func = self.scoped_fns.pop().unwrap();
+        let func_root = self.gc.get_unique_root(new_func);
+        let y = self.add_const(Object::Closure(func_root));
+        
+        self.curr_fn_mut().chunks.push(OpCode::Closure(0, y));
+        Ok(())
     }
 
     fn visit_this_expr(&mut self, val: &This) -> Result<(), LoxError> {
@@ -394,27 +417,43 @@ impl<'a> Visitor<()> for Compiler<'a> {
 
     fn visit_while_stmt(&mut self, val: &While) -> Result<(), LoxError> {
         let loop_start = self.curr_fn().chunks.len()+1;
+        let old_loop_start = self.loop_start;
         self.curr_fn_mut().chunks.push(OpCode::NoOp);
         val.condition.accept(self)?;
         
         self.curr_fn_mut().chunks.push(OpCode::JumpIfFalse(val.token.line_no, 9999));
         let then_jump = self.curr_fn().chunks.len()-1;
         self.curr_fn_mut().chunks.push(OpCode::StackPop);
-
+        
+        self.loop_start = Some((loop_start, then_jump));
         val.body.accept(self)?;
 
         self.curr_fn_mut().chunks.push(OpCode::Jump(val.token.line_no, loop_start));
         self.curr_fn_mut().chunks[then_jump] = OpCode::JumpIfFalse(val.token.line_no, self.curr_fn().chunks.len());
         self.curr_fn_mut().chunks.push(OpCode::StackPop);
+        self.loop_start = old_loop_start;
         Ok(())
     }
 
     fn visit_break_stmt(&mut self, val: &Break) -> Result<(), LoxError> {
-        todo!();
+        if let Some((_, loop_start)) = self.loop_start {
+            let x = self.add_const(Object::Bool(false));
+            self.curr_fn_mut().chunks.push(OpCode::Constant(x));
+            self.curr_fn_mut().chunks.push(OpCode::Jump(val.keyword.line_no, loop_start));
+            Ok(())
+        } else {
+            return Err(LoxError::RuntimeError(String::from("cannot continue"), 0, String::from("")))
+        }
     }
 
     fn visit_continue_stmt(&mut self, val: &Continue) -> Result<(), LoxError> {
-        todo!();
+        if let Some((cond_start, _)) = self.loop_start {
+
+            self.curr_fn_mut().chunks.push(OpCode::Jump(val.keyword.line_no, cond_start));
+            Ok(())
+        } else {
+            return Err(LoxError::RuntimeError(String::from("cannot continue"), 0, String::from("")))
+        }
     }
 
     fn visit_function_stmt(&mut self, val: &Function) -> Result<(), LoxError> {
