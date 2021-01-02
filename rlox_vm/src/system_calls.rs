@@ -1,10 +1,13 @@
 // use crate::runtime::definitions::object::Object;
 // use crate::frontend::lexer::*;
-use crate::{chunk::Object, gc::{heap::Heap, root::CustomClone}};
+use crate::{
+    chunk::Object,
+    gc::{heap::Heap, root::CustomClone},
+};
+use rlox_core::error::LoxError;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::SystemTime;
-use rlox_core::error::LoxError;
 
 pub trait SystemCalls {
     fn print(&mut self, arg: &Object, gc: &Heap);
@@ -35,8 +38,14 @@ impl SystemCalls for SystemInterface {
 impl SystemCalls for SystemInterfaceMock {
     fn print(&mut self, arg: &Object, gc: &Heap) {
         match arg {
-            Object::ClassDef(val) => self.print_cache.borrow_mut().push(Object::Str(val.name.clone())),
-            Object::InstanceDef(val) => self.print_cache.borrow_mut().push(Object::Str(val.name.clone())),
+            Object::ClassDef(val) => self
+                .print_cache
+                .borrow_mut()
+                .push(Object::Str(val.name.clone())),
+            Object::InstanceDef(val) => self
+                .print_cache
+                .borrow_mut()
+                .push(Object::Str(val.name.clone())),
             _ => self.print_cache.borrow_mut().push(arg.clone(gc)),
         };
     }

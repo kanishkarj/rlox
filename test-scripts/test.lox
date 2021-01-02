@@ -1,0 +1,3 @@
+var x = fun (a, b) {
+    return a + b ;
+};

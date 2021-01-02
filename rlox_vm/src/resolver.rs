@@ -4,12 +4,12 @@ use rlox_core::frontend::lexer::*;
 
 use rlox_core::runtime::visitor::{VisitorMut, VisitorMutAcceptor};
 
-use std::collections::HashMap;
-use rlox_core::frontend::definitions::function_type::FunctionType;
-use rlox_core::frontend::definitions::class_type::ClassType;
 use rlox_core::error::LoxError;
+use rlox_core::frontend::definitions::class_type::ClassType;
+use rlox_core::frontend::definitions::function_type::FunctionType;
 use rlox_core::frontend::definitions::literal::Literal;
 use rlox_core::frontend::definitions::token::Token;
+use std::collections::HashMap;
 
 // handle break/continue at resolve
 // static fields maybe
@@ -17,7 +17,6 @@ use rlox_core::frontend::definitions::token::Token;
 // Handle mutual local recursion. This one is weird
 // make this into a chain of resolvers, with different purpose and static checks etc.
 //////
-
 
 pub struct Resolver {
     // bool corresponds to if the value has been initialized
@@ -33,7 +32,7 @@ impl Resolver {
             fn_scopes: vec![vec![HashMap::new()]],
             curr_class: ClassType::NONE,
             curr_function: FunctionType::NONE,
-            ignore_def_check: false
+            ignore_def_check: false,
         }
     }
 
@@ -55,9 +54,13 @@ impl Resolver {
             }
         }
         if !self.ignore_def_check {
-            return Err(LoxError::SemanticError(name.lexeme.clone(),name.line_no, String::from("Undefined")));
+            return Err(LoxError::SemanticError(
+                name.lexeme.clone(),
+                name.line_no,
+                String::from("Undefined"),
+            ));
         }
-        return Ok(())
+        return Ok(());
     }
 
     // not for block scopes only lexical
@@ -83,7 +86,11 @@ impl Resolver {
         if let Some(scopes) = self.fn_scopes.last_mut() {
             if let Some(scope) = scopes.last_mut() {
                 if scope.insert(token.lexeme.clone(), false).is_some() {
-                    return Err(LoxError::SemanticError(token.lexeme.clone(),token.line_no, String::from("Already exists")));
+                    return Err(LoxError::SemanticError(
+                        token.lexeme.clone(),
+                        token.line_no,
+                        String::from("Already exists"),
+                    ));
                 }
             }
         }

@@ -1,9 +1,9 @@
 pub mod chunk;
+pub mod class;
 pub mod commons;
-pub mod debug;
 pub mod compiler;
+pub mod debug;
+pub mod gc;
+pub mod instance;
 pub mod resolver;
 pub mod system_calls;
-pub mod gc;
-pub mod class;
-pub mod instance;

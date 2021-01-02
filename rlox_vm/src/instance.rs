@@ -1,6 +1,17 @@
-use std::{cell::RefCell, collections::HashMap, ops::{Deref, DerefMut}};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+};
 
-use crate::{chunk::{FuncSpec, Object}, class::Class, gc::{heap::Heap, root::{CustomClone, Root, Trace, UniqueRoot}}};
+use crate::{
+    chunk::{FuncSpec, Object},
+    class::Class,
+    gc::{
+        heap::Heap,
+        root::{CustomClone, Root, Trace, UniqueRoot},
+    },
+};
 use std::fmt::Debug;
 
 #[derive(Debug)]
@@ -59,9 +70,8 @@ impl CustomClone for Instance {
 #[derive(Debug)]
 pub struct InstanceBoundMethod {
     pub receiver: Object,
-    pub method: UniqueRoot<FuncSpec>
+    pub method: UniqueRoot<FuncSpec>,
 }
-
 
 impl Trace for InstanceBoundMethod {
     fn trace(&mut self) {
@@ -86,4 +96,3 @@ impl InstanceBoundMethod {
         }
     }
 }
-

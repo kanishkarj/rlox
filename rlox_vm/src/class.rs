@@ -1,4 +1,10 @@
-use crate::{chunk::Object, gc::{heap::Heap, root::{CustomClone, Trace}}};
+use crate::{
+    chunk::Object,
+    gc::{
+        heap::Heap,
+        root::{CustomClone, Trace},
+    },
+};
 use std::{cell::RefCell, collections::HashMap, fmt::Debug};
 
 pub struct Class {
@@ -23,7 +29,9 @@ impl Class {
         // self.methods.borrow_mut().extend();
         for (name, method) in super_class.methods.borrow().iter() {
             if !self.methods.borrow().contains_key(name) {
-                self.methods.borrow_mut().insert(name.clone(), method.clone(gc));
+                self.methods
+                    .borrow_mut()
+                    .insert(name.clone(), method.clone(gc));
             }
         }
     }
@@ -49,4 +57,3 @@ impl Debug for Class {
         f.write_fmt(format_args!("Class<{}>", self.name))
     }
 }
-
