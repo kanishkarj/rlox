@@ -1,4 +1,4 @@
-# rust-lox
+# Rust Lox
 
 This is an implementation of Lox programming language, a Dynamically Typed Programming Language created by Bob Nystrom in his book [Crafting Interpreters](https://craftinginterpreters.com/) in rust. I built this while reading the book. It implements all the language features explained in the book like:
 
