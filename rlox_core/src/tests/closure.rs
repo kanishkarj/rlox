@@ -1,35 +1,34 @@
-use crate::frontend::parser::Parser;
+use super::*;
+use crate::error::LoxError;
 use crate::frontend::lexer::*;
-use std::fs::read_to_string;
-use std::io::{self, stdin, stdout, Read, Write};
-use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
-use crate::runtime::interpreter::{Interpreter};
+use crate::frontend::parser::Parser;
 use crate::frontend::resolver::Resolver;
+use crate::runtime::definitions::object::Object;
+use crate::runtime::interpreter::Interpreter;
 use crate::runtime::system_calls::SystemInterfaceMock;
 use logos::{source::Source, Logos};
 use std::any::Any;
 use std::cell::RefCell;
+use std::fs::read_to_string;
+use std::io::{self, stdin, stdout, Read, Write};
+use std::path::Path;
 use std::rc::Rc;
-use crate::runtime::definitions::object::Object;
-use crate::error::LoxError;
-use super::*;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 test_succeed!(
     assign_to_closure,
     "../test-scripts/closure/assign_to_closure.lox",
     "local",
-"after f",
-"after f",
-"after g"
+    "after f",
+    "after f",
+    "after g"
 );
-
 
 test_succeed!(
     assign_to_shadowed_later,
     "../test-scripts/closure/assign_to_shadowed_later.lox",
     "inner",
-"assigned"
+    "assigned"
 );
 
 test_succeed!(

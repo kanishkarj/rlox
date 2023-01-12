@@ -1,6 +1,6 @@
 use crate::frontend::definitions::expr::*;
-use crate::frontend::lexer::*;
 use crate::frontend::definitions::token::Token;
+use crate::frontend::lexer::*;
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
@@ -103,7 +103,11 @@ pub struct While {
 
 impl While {
     pub fn new(condition: Expr, body: Stmt, token: Token) -> Self {
-        Self { token, condition, body }
+        Self {
+            token,
+            condition,
+            body,
+        }
     }
 }
 
@@ -138,7 +142,12 @@ pub struct If {
 }
 
 impl If {
-    pub fn new(condition: Expr, then_branch: Stmt, else_branch: Option<Stmt>, token: Token) -> Self {
+    pub fn new(
+        condition: Expr,
+        then_branch: Stmt,
+        else_branch: Option<Stmt>,
+        token: Token,
+    ) -> Self {
         Self {
             token,
             condition,

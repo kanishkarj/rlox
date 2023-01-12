@@ -5,20 +5,20 @@ use std::fmt::Debug;
 
 use crate::runtime::environment::{GlobalEnvironment, LocalEnvironment};
 
+use crate::error::LoxError;
+use crate::frontend::definitions::literal::Literal;
+use crate::frontend::definitions::token::Token;
+use crate::frontend::definitions::token_type::TokenType;
+use crate::runtime::definitions::lox_callable::LoxCallable;
+use crate::runtime::definitions::lox_class::{LoxClass, LoxInstance};
+use crate::runtime::definitions::lox_function::{LoxFunction, LoxLambda};
+use crate::runtime::definitions::object::Object;
 use crate::runtime::system_calls::SystemCalls;
+use crate::runtime::visitor::{VisAcceptor, Visitor};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::rc::Rc;
-use crate::runtime::definitions::lox_callable::LoxCallable;
-use crate::runtime::visitor::{VisAcceptor, Visitor};
-use crate::runtime::definitions::lox_class::{LoxClass, LoxInstance};
-use crate::runtime::definitions::lox_function::{LoxLambda, LoxFunction};
-use crate::frontend::definitions::token_type::TokenType;
-use crate::error::LoxError;
-use crate::frontend::definitions::literal::Literal;
-use crate::frontend::definitions::token::Token;
-use crate::runtime::definitions::object::Object;
 
 pub struct Interpreter {
     pub env: LocalEnvironment,
@@ -160,14 +160,12 @@ impl Visitor<Object> for Interpreter {
             }
             TokenType::BangEqual => Ok(Object::Bool(left != right)),
             TokenType::EqualEqual => Ok(Object::Bool(left == right)),
-            _ => {
-                Err(LoxError::RuntimeError(
-                    val.operator.lexeme.clone(),
-                    val.operator.line_no,
-                    "Operator Unhandled".to_string(),
-                ))
-            }
-        }
+            _ => Err(LoxError::RuntimeError(
+                val.operator.lexeme.clone(),
+                val.operator.line_no,
+                "Operator Unhandled".to_string(),
+            )),
+        };
     }
 
     fn visit_call_expr(&mut self, val: &Call) -> Result<Object, LoxError> {
@@ -253,7 +251,7 @@ impl Visitor<Object> for Interpreter {
                 Ok(Object::Function(
                     inst.klass.bind_method(&val.name, Rc::clone(&inst))?,
                 ))
-            }
+            };
         }
         Err(LoxError::RuntimeError(
             val.name.lexeme.clone(),
@@ -274,7 +272,7 @@ impl Visitor<Object> for Interpreter {
                 val.name.line_no,
                 "Only Instances have feilds".to_string(),
             ))
-        }
+        };
     }
 
     fn visit_lambda_expr(&mut self, val: &Lambda) -> Result<Object, LoxError> {
@@ -371,11 +369,11 @@ impl Visitor<Object> for Interpreter {
         } else {
             is_true = true;
         }
-                if is_true {
-                    self.evaluate(&val.then_branch)?;
-                } else if let Some(stmt) = &val.else_branch {
-                    self.evaluate(stmt)?;
-                }
+        if is_true {
+            self.evaluate(&val.then_branch)?;
+        } else if let Some(stmt) = &val.else_branch {
+            self.evaluate(stmt)?;
+        }
         return Ok(Object::Nil);
     }
 
@@ -385,7 +383,7 @@ impl Visitor<Object> for Interpreter {
             match self.evaluate(&val.body) {
                 Err(LoxError::Break(_)) => break,
                 Err(LoxError::Continue(_)) => continue,
-                Err(LoxError::ReturnVal(obj,ln)) => return Err(LoxError::ReturnVal(obj,ln)),
+                Err(LoxError::ReturnVal(obj, ln)) => return Err(LoxError::ReturnVal(obj, ln)),
                 _ => {}
             }
             res = self.evaluate(&val.condition)?;
@@ -444,7 +442,11 @@ impl Visitor<Object> for Interpreter {
 
         for method in &val.methods {
             println!("{}", method.name.lexeme.clone());
-            let func = Rc::new(LoxFunction::new(method.clone(), self.env.clone(), method.name.lexeme == "init"));
+            let func = Rc::new(LoxFunction::new(
+                method.clone(),
+                self.env.clone(),
+                method.name.lexeme == "init",
+            ));
 
             // let func = Rc::new(LoxFunction::new(method.clone(), self.env.clone(), true));
             methods.insert(method.name.lexeme.clone(), func);
@@ -511,7 +513,7 @@ impl Interpreter {
             Object::Bool(v) => *v,
             Object::Nil => false,
             _ => true,
-        }
+        };
     }
 
     fn variable_lookup(&mut self, name: &Token) -> Result<Object, LoxError>
@@ -524,7 +526,9 @@ impl Interpreter {
             "Undefined get".to_string(),
         );
         return if let Some(dist) = name.scope {
-            self.env.get_at(name.lexeme.clone(), dist).ok_or(err.clone())
+            self.env
+                .get_at(name.lexeme.clone(), dist)
+                .ok_or(err.clone())
         } else {
             self.global.get(name.lexeme.clone()).ok_or(err)
         };

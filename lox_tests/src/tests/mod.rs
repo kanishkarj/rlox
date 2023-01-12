@@ -1,13 +1,13 @@
 #![allow(unused_imports)]
 
-use rlox_core::frontend::parser::Parser;
 use rlox_core::frontend::lexer::*;
+use rlox_core::frontend::parser::Parser;
+use rlox_core::runtime::interpreter::Interpreter;
+use rlox_vm::resolver::Resolver;
 use std::fs::read_to_string;
 use std::io::{self, stdin, stdout, Read, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use rlox_core::runtime::interpreter::{Interpreter};
-use rlox_vm::resolver::Resolver;
 // // use logos::{source::Source, Logos};
 use std::any::Any;
 use std::cell::RefCell;
@@ -44,7 +44,7 @@ let val = $res_vec.pop();
             assert_eq!(val, Some(Object::Bool(*f)));
         } else if let Some(_f) = (&$expected_val as &dyn Any).downcast_ref::<Object>() {
             if let Some(Object::Nil) = val {
-                
+
             }
             else {
                 panic!("[from script(class): {:?}][tested for: {:?}]",val.unwrap(),$expected_val);
@@ -106,17 +106,24 @@ macro_rules! test_fail {
             use rlox_vm::system_calls::SystemInterfaceMock;
             let print_cache = Rc::new(RefCell::new(vec![]));
             // let mut interpreter = Interpreter::new(Rc::new(RefCell::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)})));
-            if let Err(err) = run_file($file_path, SystemInterfaceMock{print_cache: Rc::clone(&print_cache)}) {
+            if let Err(err) = run_file(
+                $file_path,
+                SystemInterfaceMock {
+                    print_cache: Rc::clone(&print_cache),
+                },
+            ) {
                 use LoxError::*;
                 match (err.clone(), $err_val) {
-                    (ScannerError(_,_,_), ScannerError(_,_,_)) => {},
-                    (ParserError(_,_,_), ParserError(_,_,_)) => {},
-                    (RuntimeError(_,_,_), RuntimeError(_,_,_))  => {},
-                    (SemanticError(_,_,_), SemanticError(_,_,_))  => {},
-                    (Break(line1), Break(line2)) if line1 == line2  => {},
-                    (Continue(line1), Continue(line2)) if line1 == line2  => {},
-                    (ReturnVal(_, line1), ReturnVal(_, line2)) if line1 == line2  => {},
-                    _ => {panic!("unhandled error {:?}", err)},
+                    (ScannerError(_, _, _), ScannerError(_, _, _)) => {}
+                    (ParserError(_, _, _), ParserError(_, _, _)) => {}
+                    (RuntimeError(_, _, _), RuntimeError(_, _, _)) => {}
+                    (SemanticError(_, _, _), SemanticError(_, _, _)) => {}
+                    (Break(line1), Break(line2)) if line1 == line2 => {}
+                    (Continue(line1), Continue(line2)) if line1 == line2 => {}
+                    (ReturnVal(_, line1), ReturnVal(_, line2)) if line1 == line2 => {}
+                    _ => {
+                        panic!("unhandled error {:?}", err)
+                    }
                 }
                 return;
             }
@@ -136,34 +143,33 @@ macro_rules! test_fail {
 //     assert_eq!(print_cache.pop(), None);
 // }
 
-
 mod assignment;
 mod block;
 mod bool;
+mod break_stmt;
 mod call;
 mod class;
 mod closure;
-mod function;
-mod for_stmt;
-mod return_stmt;
-mod field;
+mod comments;
 mod constructor;
-mod inheritance;
+mod continue_stmt;
+mod field;
+mod for_stmt;
+mod function;
 mod if_stmt;
+mod inheritance;
+mod lambda;
 mod logical_operator;
 mod method;
+mod miscellaneous;
 mod nil;
 mod number;
 mod operator;
+mod print;
+mod regression;
+mod return_stmt;
 mod string;
 mod super_stmt;
 mod this;
 mod variable;
 mod while_stmt;
-mod print;
-mod regression;
-mod comments;
-mod miscellaneous;
-mod break_stmt;
-mod continue_stmt;
-mod lambda;

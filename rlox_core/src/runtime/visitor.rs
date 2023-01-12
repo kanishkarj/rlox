@@ -1,7 +1,11 @@
-use crate::frontend::definitions::expr::{Binary, Call, Grouping, Unary, Logical, Get, Set, Lambda, This, Super, Variable, Assign, Expr};
-use crate::frontend::definitions::stmt::{Expression, Print, Var, Block, If, While, Break, Continue, Function, Return, Class, Stmt};
 use crate::error::LoxError;
+use crate::frontend::definitions::expr::{
+    Assign, Binary, Call, Expr, Get, Grouping, Lambda, Logical, Set, Super, This, Unary, Variable,
+};
 use crate::frontend::definitions::literal::Literal;
+use crate::frontend::definitions::stmt::{
+    Block, Break, Class, Continue, Expression, Function, If, Print, Return, Stmt, Var, While,
+};
 
 pub trait VisitorMut<R> {
     fn visit_binary_expr(&mut self, expr: &mut Binary) -> Result<R, LoxError>;
@@ -72,7 +76,7 @@ impl<T> VisitorMutAcceptor<T> for Stmt {
                 let x = vis.visit_class_stmt(v);
                 x
             }
-            Stmt::StackTrace => vis.visit_stack_trace_stmt()
+            Stmt::StackTrace => vis.visit_stack_trace_stmt(),
         }
     }
 }
@@ -156,7 +160,7 @@ impl<T> VisAcceptor<T> for Stmt {
             Stmt::Function(v) => vis.visit_function_stmt(v),
             Stmt::Return(v) => vis.visit_return_stmt(v),
             Stmt::Class(v) => vis.visit_class_stmt(v),
-            Stmt::StackTrace => vis.visit_stack_trace_stmt()
+            Stmt::StackTrace => vis.visit_stack_trace_stmt(),
         }
     }
 }
@@ -173,4 +177,3 @@ where
         return Ok(T::default());
     }
 }
-

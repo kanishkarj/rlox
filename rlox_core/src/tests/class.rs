@@ -1,21 +1,21 @@
-use crate::frontend::parser::Parser;
+use super::*;
+use crate::error::LoxError;
 use crate::frontend::lexer::*;
-use std::fs::read_to_string;
-use std::io::{self, stdin, stdout, Read, Write};
-use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
-use crate::runtime::interpreter::{Interpreter};
+use crate::frontend::parser::Parser;
 use crate::frontend::resolver::Resolver;
+use crate::runtime::definitions::lox_class::{LoxClass, LoxInstance};
+use crate::runtime::definitions::object::Object;
+use crate::runtime::interpreter::Interpreter;
 use crate::runtime::system_calls::SystemInterfaceMock;
 use logos::{source::Source, Logos};
 use std::any::Any;
 use std::cell::RefCell;
-use std::rc::Rc;
-use crate::runtime::definitions::object::Object;
-use crate::error::LoxError;
-use super::*;
-use crate::runtime::definitions::lox_class::{LoxClass, LoxInstance};
 use std::collections::HashMap;
+use std::fs::read_to_string;
+use std::io::{self, stdin, stdout, Read, Write};
+use std::path::Path;
+use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 test_succeed!(
     empty,
@@ -26,7 +26,7 @@ test_succeed!(
 test_fail!(
     inherit_self,
     "../test-scripts/class/inherit_self.lox",
-    LoxError::SemanticError(String::from("Foo"),1,String::from(""))
+    LoxError::SemanticError(String::from("Foo"), 1, String::from(""))
 );
 
 test_succeed!(
@@ -46,7 +46,7 @@ test_succeed!(
 test_fail!(
     local_inherit_self,
     "../test-scripts/class/local_inherit_self.lox",
-    LoxError::SemanticError(String::from("Foo"),2,String::from(""))
+    LoxError::SemanticError(String::from("Foo"), 2, String::from(""))
 );
 
 test_succeed!(

@@ -73,26 +73,26 @@ impl LocalEnvironment {
         return if hops == 0 {
             Some(self.clone())
         } else if let Some(env) = &mut self.env.borrow_mut().parent {
-            return env.ancestor(hops - 1)
+            return env.ancestor(hops - 1);
         } else {
             None
         };
     }
     pub fn get_at(&self, name: String, hops: usize) -> Option<Object> {
         if let Some(env) = &mut self.ancestor(hops) {
-            return env.env.borrow_mut().get(name)
+            return env.env.borrow_mut().get(name);
         }
         None
     }
 
     pub fn assign_at(&self, name: String, val: Object, hops: usize) -> bool {
         if let Some(env) = &mut self.ancestor(hops) {
-            return env.env.borrow_mut().assign(name, val)
+            return env.env.borrow_mut().assign(name, val);
         }
         false
     }
 
-    pub fn define_at(&self, name: String, val: Object, hops: usize)  -> Option<Object> {
+    pub fn define_at(&self, name: String, val: Object, hops: usize) -> Option<Object> {
         if let Some(env) = &mut self.ancestor(hops) {
             env.env.borrow_mut().define(name, val)
         } else {
@@ -115,7 +115,7 @@ impl GlobalEnvironment {
         self.env.borrow_mut().get(name)
     }
 
-    pub fn define(&self, name: String, val: Object)  -> Option<Object> {
+    pub fn define(&self, name: String, val: Object) -> Option<Object> {
         self.env.borrow_mut().define(name, val)
     }
 }

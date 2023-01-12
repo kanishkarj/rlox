@@ -1,5 +1,5 @@
-use crate::frontend::definitions::token_type::TokenType;
 use crate::frontend::definitions::literal::Literal;
+use crate::frontend::definitions::token_type::TokenType;
 
 #[derive(Debug, Clone)]
 pub struct Token {
@@ -26,4 +26,3 @@ impl Token {
         }
     }
 }
-

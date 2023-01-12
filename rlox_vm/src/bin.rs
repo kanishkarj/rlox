@@ -14,7 +14,7 @@ fn main() {
     let cli_args: Vec<String> = args().collect();
     let ln = cli_args.len();
     if ln == 2 {
-        println!("{:?}", run_file(&cli_args[1], SystemInterface {}));
+        run_file(&cli_args[1], SystemInterface {});
     } else if ln < 2 {
     } else {
         println!("rlox [script]");

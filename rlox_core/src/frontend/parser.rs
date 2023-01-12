@@ -1,10 +1,10 @@
-use crate::frontend::definitions::expr::*;
-use crate::frontend::definitions::stmt::*;
-use crate::frontend::lexer::*;
-use crate::frontend::definitions::token_type::TokenType;
 use crate::error::LoxError;
+use crate::frontend::definitions::expr::*;
 use crate::frontend::definitions::literal::Literal;
+use crate::frontend::definitions::stmt::*;
 use crate::frontend::definitions::token::Token;
+use crate::frontend::definitions::token_type::TokenType;
+use crate::frontend::lexer::*;
 use crate::runtime::definitions::lox_class::LoxClass;
 
 pub struct Parser {
@@ -60,10 +60,7 @@ impl Parser {
             self.consume(TokenType::IDENTIFIER, format!("Expect SuperClass name"))?;
             super_class = Some(Variable::new(self.previous().clone()));
         }
-        self.consume(
-            TokenType::LeftBrace,
-            format!("Expect {{ before class body"),
-        )?;
+        self.consume(TokenType::LeftBrace, format!("Expect {{ before class body"))?;
 
         let mut methods = Vec::new();
 
@@ -108,10 +105,7 @@ impl Parser {
                 };
             }
         }
-        self.consume(
-            TokenType::RightParen,
-            "Expect ')' after params".to_string(),
-        )?;
+        self.consume(TokenType::RightParen, "Expect ')' after params".to_string())?;
         self.consume(TokenType::LeftBrace, "Expect '{' before body".to_string())?;
 
         let body = self.block()?;
@@ -133,9 +127,11 @@ impl Parser {
         Ok(Stmt::Var(Box::new(Var::new(name, initializer))))
     }
 
-
     fn stack_trace(&mut self) -> Result<Stmt, LoxError> {
-        self.consume(TokenType::SEMICOLON, "Expect ';' after stack trace.".to_string())?;
+        self.consume(
+            TokenType::SEMICOLON,
+            "Expect ';' after stack trace.".to_string(),
+        )?;
         Ok(Stmt::StackTrace)
     }
 
@@ -235,7 +231,7 @@ impl Parser {
         } else {
             init = Some(self.expressions_statement()?);
         }
-        
+
         // Condition
         let mut condition = None;
         if !self.check(TokenType::SEMICOLON) {
@@ -293,7 +289,10 @@ impl Parser {
             else_branch = Some(self.statement()?);
         }
         return Ok(Stmt::If(Box::new(If::new(
-            condition, then_branch, else_branch, token
+            condition,
+            then_branch,
+            else_branch,
+            token,
         ))));
     }
 
@@ -333,10 +332,7 @@ impl Parser {
                 };
             }
         }
-        self.consume(
-            TokenType::RightParen,
-            "Expect ')' after params".to_string(),
-        )?;
+        self.consume(TokenType::RightParen, "Expect ')' after params".to_string())?;
         self.consume(TokenType::LeftBrace, "Expect '{' before body".to_string())?;
 
         let body = self.block()?;
@@ -358,7 +354,11 @@ impl Parser {
                     value,
                 ))))
             } else {
-                Err(LoxError::RuntimeError(equals.lexeme.clone(), equals.line_no, String::from("Invalid assignment")))
+                Err(LoxError::RuntimeError(
+                    equals.lexeme.clone(),
+                    equals.line_no,
+                    String::from("Invalid assignment"),
+                ))
             }
         } else {
             Ok(expr)
@@ -399,38 +399,6 @@ impl Parser {
         }
 
         return Ok(expr);
-    }
-
-    fn validate(&mut self, token: TokenType) -> bool {
-        if self.check(token) {
-            self.advance();
-            return true;
-        }
-        false
-    }
-
-    fn check(&self, token: TokenType) -> bool {
-        if self.is_at_end() {
-            return false;
-        }
-        return self.peek().token_type == token;
-    }
-
-    fn advance(&mut self) -> &Token {
-        if !self.is_at_end() {
-            self.curr += 1
-        }
-        return self.previous();
-    }
-
-    fn is_at_end(&self) -> bool {
-        return self.peek().token_type == TokenType::EOF;
-    }
-    fn peek(&self) -> &Token {
-        return &self.tokens[self.curr];
-    }
-    fn previous(&self) -> &Token {
-        return &self.tokens[self.curr - 1];
     }
 
     fn comparison(&mut self) -> Result<Expr, LoxError> {
@@ -573,13 +541,45 @@ impl Parser {
         ));
     }
 
+    fn validate(&mut self, token: TokenType) -> bool {
+        if self.check(token) {
+            self.advance();
+            return true;
+        }
+        false
+    }
+
+    fn check(&self, token: TokenType) -> bool {
+        if self.is_at_end() {
+            return false;
+        }
+        return self.peek().token_type == token;
+    }
+
+    fn advance(&mut self) -> &Token {
+        if !self.is_at_end() {
+            self.curr += 1
+        }
+        return self.previous();
+    }
+
+    fn is_at_end(&self) -> bool {
+        return self.peek().token_type == TokenType::EOF;
+    }
+    fn peek(&self) -> &Token {
+        return &self.tokens[self.curr];
+    }
+    fn previous(&self) -> &Token {
+        return &self.tokens[self.curr - 1];
+    }
+
     fn consume(&mut self, token: TokenType, message: String) -> Result<&Token, LoxError> {
         return if self.check(token) {
             Ok(self.advance())
         } else {
             let err_token = self.peek();
             Err(Self::error(err_token.clone(), message))
-        }
+        };
     }
 
     fn error(token: Token, message: String) -> LoxError {

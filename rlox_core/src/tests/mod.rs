@@ -1,21 +1,21 @@
 #![allow(unused_imports)]
 
-use crate::frontend::parser::Parser;
+use crate::error::LoxError;
 use crate::frontend::lexer::*;
-use std::fs::read_to_string;
-use std::io::{self, stdin, stdout, Read, Write};
-use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
-use crate::runtime::interpreter::{Interpreter};
+use crate::frontend::parser::Parser;
 use crate::frontend::resolver::Resolver;
+use crate::runtime::definitions::lox_class::*;
+use crate::runtime::definitions::object::Object;
+use crate::runtime::interpreter::Interpreter;
 use crate::runtime::system_calls::SystemInterfaceMock;
 use logos::{source::Source, Logos};
 use std::any::Any;
 use std::cell::RefCell;
+use std::fs::read_to_string;
+use std::io::{self, stdin, stdout, Read, Write};
+use std::path::Path;
 use std::rc::Rc;
-use crate::runtime::definitions::object::Object;
-use crate::runtime::definitions::lox_class::*;
-use crate::error::LoxError;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 fn run_script(path: &str, interpreter: &mut Interpreter) -> Result<(), LoxError> {
     let path = Path::new(path);
@@ -93,18 +93,26 @@ macro_rules! test_fail {
         #[test]
         fn $test_name() {
             let print_cache = Rc::new(RefCell::new(vec![]));
-            let mut interpreter = Interpreter::new(Rc::new(RefCell::new(SystemInterfaceMock{print_cache: Rc::clone(&print_cache)})));
+            let mut interpreter = Interpreter::new(Rc::new(RefCell::new(SystemInterfaceMock {
+                print_cache: Rc::clone(&print_cache),
+            })));
             if let Err(err) = run_script($file_path, &mut interpreter) {
                 use LoxError::*;
                 match (err.clone(), $err_val) {
-                    (ScannerError(lex1,line1,_), ScannerError(lex2,line2,_)) if lex1 == lex2 && line1 == line2 => {},
-                    (ParserError(lex1,line1,_), ParserError(lex2,line2,_))  if lex1 == lex2 && line1 == line2 => {},
-                    (RuntimeError(lex1,line1,_), RuntimeError(lex2,line2,_)) if lex1 == lex2 && line1 == line2  => {},
-                    (SemanticError(lex1,line1,_), SemanticError(lex2,line2,_)) if lex1 == lex2 && line1 == line2  => {},
-                    (Break(line1), Break(line2)) if line1 == line2  => {},
-                    (Continue(line1), Continue(line2)) if line1 == line2  => {},
-                    (ReturnVal(_, line1), ReturnVal(_, line2)) if line1 == line2  => {},
-                    _ => {panic!("unhandled error {:?}", err)},
+                    (ScannerError(lex1, line1, _), ScannerError(lex2, line2, _))
+                        if lex1 == lex2 && line1 == line2 => {}
+                    (ParserError(lex1, line1, _), ParserError(lex2, line2, _))
+                        if lex1 == lex2 && line1 == line2 => {}
+                    (RuntimeError(lex1, line1, _), RuntimeError(lex2, line2, _))
+                        if lex1 == lex2 && line1 == line2 => {}
+                    (SemanticError(lex1, line1, _), SemanticError(lex2, line2, _))
+                        if lex1 == lex2 && line1 == line2 => {}
+                    (Break(line1), Break(line2)) if line1 == line2 => {}
+                    (Continue(line1), Continue(line2)) if line1 == line2 => {}
+                    (ReturnVal(_, line1), ReturnVal(_, line2)) if line1 == line2 => {}
+                    _ => {
+                        panic!("unhandled error {:?}", err)
+                    }
                 }
                 return;
             }
@@ -124,32 +132,31 @@ macro_rules! test_fail {
 //     assert_eq!(print_cache.pop(), None);
 // }
 
-
 mod assignment;
 mod block;
 mod bool;
+mod break_stmt;
 mod call;
 mod class;
 mod closure;
-mod function;
-mod for_stmt;
-mod return_stmt;
-mod field;
+mod comments;
 mod constructor;
-mod inheritance;
+mod field;
+mod for_stmt;
+mod function;
 mod if_stmt;
+mod inheritance;
 mod logical_operator;
 mod method;
+mod miscellaneous;
 mod nil;
 mod number;
 mod operator;
+mod print;
+mod regression;
+mod return_stmt;
 mod string;
 mod super_stmt;
 mod this;
 mod variable;
 mod while_stmt;
-mod print;
-mod regression;
-mod comments;
-mod miscellaneous;
-mod break_stmt;

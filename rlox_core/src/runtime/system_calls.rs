@@ -1,9 +1,9 @@
-use crate::runtime::definitions::object::Object;
+use crate::error::LoxError;
 use crate::frontend::lexer::*;
+use crate::runtime::definitions::object::Object;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::SystemTime;
-use crate::error::LoxError;
 
 pub trait SystemCalls {
     fn print(&mut self, arg: &Object);

@@ -42,7 +42,7 @@ fn run<T: SystemCalls, S: AsRef<str>>(script: S, sys_interface: T) -> Result<(),
     let mut comp = Compiler::new(&gc);
     ast.accept(&mut comp)?;
     comp.curr_fn_mut().chunks.push(OpCode::Exit(0));
-    println!("{:?}", comp.curr_fn().chunks);
+    // println!("{:?}", comp.curr_fn().chunks);
     let curr_fn = comp.curr_fn().clone(&gc);
     let cons_pl = comp.constant_pool;
     let mut vm = VM::new(sys_interface, cons_pl, curr_fn, &gc);

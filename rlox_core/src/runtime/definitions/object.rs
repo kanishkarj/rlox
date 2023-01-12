@@ -1,7 +1,7 @@
 use crate::error::LoxError;
+use crate::frontend::definitions::literal::Literal;
 use crate::runtime::definitions::lox_callable::LoxCallable;
 use crate::runtime::definitions::lox_class::{LoxClass, LoxInstance};
-use crate::frontend::definitions::literal::Literal;
 use std::fmt::Display;
 use std::rc::Rc;
 // obj.get not handled
@@ -61,109 +61,110 @@ impl Display for Object {
 }
 
 impl Object {
-    pub fn add(&self, other: &Self, line_no: u32) -> Result<Self, LoxError>{
+    pub fn add(&self, other: &Self, line_no: u32) -> Result<Self, LoxError> {
         use Object::*;
         match (self, other) {
-            (Num(ref l), Num(ref r)) => Ok(Object::Num(l+r)),
-            (Str(ref l), Str(ref r)) => {let mut l = l.clone(); l.push_str(r); Ok(Object::Str(l))},
+            (Num(ref l), Num(ref r)) => Ok(Object::Num(l + r)),
+            (Str(ref l), Str(ref r)) => {
+                let mut l = l.clone();
+                l.push_str(r);
+                Ok(Object::Str(l))
+            }
             // TODO: import error def
-            _ => {Err(LoxError::RuntimeError(
+            _ => Err(LoxError::RuntimeError(
                 other.to_string(),
                 line_no,
                 "Operands not Num or String".to_string(),
-            ))}
+            )),
         }
     }
-    pub fn sub(&self, other: &Self, line_no: u32) -> Result<Self, LoxError>{
+    pub fn sub(&self, other: &Self, line_no: u32) -> Result<Self, LoxError> {
         use Object::*;
         match (self, other) {
-            (Num(ref l), Num(ref r)) => Ok(Object::Num(l-r)),
+            (Num(ref l), Num(ref r)) => Ok(Object::Num(l - r)),
             // TODO: import error def
-            _ => {Err(LoxError::RuntimeError(
+            _ => Err(LoxError::RuntimeError(
                 other.to_string(),
                 line_no,
                 "Operands not Num or String".to_string(),
-            ))}
+            )),
         }
     }
-    pub fn mul(&self, other: &Self, line_no: u32) -> Result<Self, LoxError>{
+    pub fn mul(&self, other: &Self, line_no: u32) -> Result<Self, LoxError> {
         use Object::*;
         match (self, other) {
-            (Num(ref l), Num(ref r)) => Ok(Object::Num(l*r)),
+            (Num(ref l), Num(ref r)) => Ok(Object::Num(l * r)),
             // TODO: import error def
-            _ => {Err(LoxError::RuntimeError(
+            _ => Err(LoxError::RuntimeError(
                 other.to_string(),
                 line_no,
                 "Operands not Num or String".to_string(),
-            ))}
+            )),
         }
     }
-    pub fn div(&self, other: &Self, line_no: u32) -> Result<Self, LoxError>{
+    pub fn div(&self, other: &Self, line_no: u32) -> Result<Self, LoxError> {
         use Object::*;
         match (self, other) {
-            (Num(ref l), Num(ref r)) => Ok(Object::Num(l/r)),
+            (Num(ref l), Num(ref r)) => Ok(Object::Num(l / r)),
             // TODO: import error def
-            _ => {Err(LoxError::RuntimeError(
+            _ => Err(LoxError::RuntimeError(
                 other.to_string(),
                 line_no,
                 "Operands not Num or String".to_string(),
-            ))}
+            )),
         }
     }
-    pub fn gt(&self, other: &Self, line_no: u32) -> Result<Self, LoxError>{
+    pub fn gt(&self, other: &Self, line_no: u32) -> Result<Self, LoxError> {
         use Object::*;
         match (self, other) {
-            (Num(ref l), Num(ref r)) => Ok(Object::Bool(l>r)),
-            (Str(ref l), Str(ref r)) => Ok(Object::Bool(l>r)),
+            (Num(ref l), Num(ref r)) => Ok(Object::Bool(l > r)),
+            (Str(ref l), Str(ref r)) => Ok(Object::Bool(l > r)),
             // TODO: import error def
-            _ => {Err(LoxError::RuntimeError(
+            _ => Err(LoxError::RuntimeError(
                 other.to_string(),
                 line_no,
                 "Operands not Num or String".to_string(),
-            ))}
+            )),
         }
     }
-    pub fn gte(&self, other: &Self, line_no: u32) -> Result<Self, LoxError>{
+    pub fn gte(&self, other: &Self, line_no: u32) -> Result<Self, LoxError> {
         use Object::*;
         match (self, other) {
-            (Num(ref l), Num(ref r)) => Ok(Object::Bool(l>=r)),
-            (Str(ref l), Str(ref r)) => Ok(Object::Bool(l>=r)),
+            (Num(ref l), Num(ref r)) => Ok(Object::Bool(l >= r)),
+            (Str(ref l), Str(ref r)) => Ok(Object::Bool(l >= r)),
             // TODO: import error def
-            _ => {Err(LoxError::RuntimeError(
+            _ => Err(LoxError::RuntimeError(
                 other.to_string(),
                 line_no,
                 "Operands not Num or String".to_string(),
-            ))}
+            )),
         }
     }
-    pub fn lt(&self, other: &Self, line_no: u32) -> Result<Self, LoxError>{
+    pub fn lt(&self, other: &Self, line_no: u32) -> Result<Self, LoxError> {
         use Object::*;
         match (self, other) {
-            
-            (Num(ref l), Num(ref r)) => Ok(Object::Bool(l<r)),
-            (Str(ref l), Str(ref r)) => Ok(Object::Bool(l<r)),
+            (Num(ref l), Num(ref r)) => Ok(Object::Bool(l < r)),
+            (Str(ref l), Str(ref r)) => Ok(Object::Bool(l < r)),
             // TODO: import error def
-            _ => {Err(LoxError::RuntimeError(
+            _ => Err(LoxError::RuntimeError(
                 other.to_string(),
                 line_no,
                 "Operands not Num or String".to_string(),
-            ))}
+            )),
         }
     }
-    pub fn lte(&self, other: &Self, line_no: u32) -> Result<Self, LoxError>{
+    pub fn lte(&self, other: &Self, line_no: u32) -> Result<Self, LoxError> {
         use Object::*;
         match (self, other) {
-            (Num(ref l), Num(ref r)) => Ok(Object::Bool(l<=r)),
-            (Str(ref l), Str(ref r)) => Ok(Object::Bool(l<=r)),
+            (Num(ref l), Num(ref r)) => Ok(Object::Bool(l <= r)),
+            (Str(ref l), Str(ref r)) => Ok(Object::Bool(l <= r)),
             // TODO: import error def
-            _ => {Err(LoxError::RuntimeError(
+            _ => Err(LoxError::RuntimeError(
                 other.to_string(),
                 line_no,
                 "Operands not Num or String".to_string(),
-            ))}
+            )),
         }
     }
 }
 impl Eq for Object {}
-
-

@@ -4,4 +4,3 @@ pub enum ClassType {
     SUBCLASS,
     NONE,
 }
-

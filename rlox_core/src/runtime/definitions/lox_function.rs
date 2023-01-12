@@ -1,13 +1,13 @@
-use crate::frontend::definitions::stmt::Function;
-use crate::runtime::environment::LocalEnvironment;
-use std::cell::RefCell;
-use crate::runtime::definitions::lox_class::LoxInstance;
-use crate::runtime::interpreter::{Interpreter};
-use crate::frontend::definitions::expr::Lambda;
-use crate::runtime::definitions::lox_callable::LoxCallable;
 use crate::error::LoxError;
-use std::rc::Rc;
+use crate::frontend::definitions::expr::Lambda;
+use crate::frontend::definitions::stmt::Function;
+use crate::runtime::definitions::lox_callable::LoxCallable;
+use crate::runtime::definitions::lox_class::LoxInstance;
 use crate::runtime::definitions::object::Object;
+use crate::runtime::environment::LocalEnvironment;
+use crate::runtime::interpreter::Interpreter;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct LoxFunction {
@@ -94,4 +94,3 @@ impl LoxCallable for LoxLambda {
         String::from("Lambda")
     }
 }
-

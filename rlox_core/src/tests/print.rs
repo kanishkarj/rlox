@@ -1,25 +1,22 @@
-
-use crate::frontend::parser::Parser;
+use super::*;
+use crate::error::LoxError;
 use crate::frontend::lexer::*;
-use std::fs::read_to_string;
-use std::io::{self, stdin, stdout, Read, Write};
-use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
-use crate::runtime::interpreter::{Interpreter};
+use crate::frontend::parser::Parser;
 use crate::frontend::resolver::Resolver;
+use crate::runtime::definitions::object::Object;
+use crate::runtime::interpreter::Interpreter;
 use crate::runtime::system_calls::SystemInterfaceMock;
 use logos::{source::Source, Logos};
 use std::any::Any;
 use std::cell::RefCell;
+use std::fs::read_to_string;
+use std::io::{self, stdin, stdout, Read, Write};
+use std::path::Path;
 use std::rc::Rc;
-use crate::runtime::definitions::object::Object;
-use crate::error::LoxError;
-use super::*;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-            test_fail!(
-                missing_argument,
-                ".././test-scripts/print/missing_argument.lox",
-                LoxError::ParserError(String::from(";"), 2, String::from(""))
-            );
-
-            
+test_fail!(
+    missing_argument,
+    ".././test-scripts/print/missing_argument.lox",
+    LoxError::ParserError(String::from(";"), 2, String::from(""))
+);

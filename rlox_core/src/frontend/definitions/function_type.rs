@@ -6,4 +6,3 @@ pub enum FunctionType {
     NONE,
     LAMBDA,
 }
-

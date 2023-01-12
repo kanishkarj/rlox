@@ -1,16 +1,16 @@
-use crate::runtime::interpreter::Interpreter;
+use crate::frontend::lexer::*;
 use crate::frontend::parser::Parser;
 use crate::frontend::resolver::Resolver;
-use crate::frontend::lexer::*;
+use crate::runtime::interpreter::Interpreter;
 use std::fs::read_to_string;
 use std::io::{self, stdin, Write};
 use std::path::Path;
 
 use crate::runtime::system_calls::{SystemCalls, SystemInterface};
 
+use crate::error::LoxError;
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::error::LoxError;
 
 /**
  * TODO:

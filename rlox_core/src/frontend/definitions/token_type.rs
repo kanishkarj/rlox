@@ -2,8 +2,6 @@ use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq, Clone)]
 pub enum TokenType {
-
-
     #[token("(")]
     LeftParen,
 
@@ -119,7 +117,7 @@ pub enum TokenType {
 
     #[token("stacktrace")]
     STACKTRACE,
-    
+
     // Or regular expressions.
     #[regex("[a-zA-Z]+[a-zA-Z0-9_]*")]
     IDENTIFIER,
@@ -134,7 +132,7 @@ pub enum TokenType {
 
     #[regex("//[^\n]*")]
     COMMENTS,
-    
+
     // Logos requires one token variant to handle errors,
     // it can be named anything you wish.
     #[error]
@@ -145,4 +143,3 @@ pub enum TokenType {
 
     EOF,
 }
-

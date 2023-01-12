@@ -1,13 +1,13 @@
-use crate::runtime::definitions::lox_function::LoxFunction;
-use std::rc::Rc;
-use crate::runtime::interpreter::{Interpreter};
-use std::cell::RefCell;
-use std::collections::HashMap;
-use crate::runtime::definitions::lox_callable::LoxCallable;
 use crate::error::LoxError;
 use crate::frontend::definitions::token::Token;
+use crate::runtime::definitions::lox_callable::LoxCallable;
+use crate::runtime::definitions::lox_function::LoxFunction;
 use crate::runtime::definitions::object::Object;
+use crate::runtime::interpreter::Interpreter;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Pointer};
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct LoxClass {
@@ -107,4 +107,3 @@ impl LoxCallable for LoxClass {
         self.name.clone()
     }
 }
-

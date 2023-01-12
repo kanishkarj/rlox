@@ -1,10 +1,10 @@
-use crate::runtime::interpreter::{Interpreter};
 use crate::error::LoxError;
-use crate::runtime::environment::LocalEnvironment;
-use std::rc::Rc;
 use crate::runtime::definitions::lox_class::LoxClass;
 use crate::runtime::definitions::lox_function::{LoxFunction, LoxLambda};
 use crate::runtime::definitions::object::Object;
+use crate::runtime::environment::LocalEnvironment;
+use crate::runtime::interpreter::Interpreter;
+use std::rc::Rc;
 
 pub trait LoxCallable: LoxCallableClone {
     fn call(&self, interpreter: &mut Interpreter, args: Vec<Object>) -> Result<Object, LoxError>;
@@ -37,4 +37,3 @@ impl std::fmt::Debug for dyn LoxCallable {
         write!(f, "{}", "callable")
     }
 }
-

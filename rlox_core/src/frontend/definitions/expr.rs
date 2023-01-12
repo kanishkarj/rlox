@@ -1,8 +1,8 @@
-use crate::runtime::definitions::lox_callable::LoxCallable;
-use crate::frontend::definitions::stmt::*;
-use crate::frontend::lexer::*;
 use crate::frontend::definitions::literal::Literal;
+use crate::frontend::definitions::stmt::*;
 use crate::frontend::definitions::token::Token;
+use crate::frontend::lexer::*;
+use crate::runtime::definitions::lox_callable::LoxCallable;
 
 #[derive(Debug, Clone)]
 pub enum Expr {

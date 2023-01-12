@@ -4,12 +4,12 @@ use crate::frontend::lexer::*;
 
 use crate::runtime::visitor::{VisitorMut, VisitorMutAcceptor};
 
-use std::collections::HashMap;
-use crate::frontend::definitions::function_type::FunctionType;
-use crate::frontend::definitions::class_type::ClassType;
 use crate::error::LoxError;
+use crate::frontend::definitions::class_type::ClassType;
+use crate::frontend::definitions::function_type::FunctionType;
 use crate::frontend::definitions::literal::Literal;
 use crate::frontend::definitions::token::Token;
+use std::collections::HashMap;
 
 // handle break/continue at resolve
 // static fields maybe
@@ -57,7 +57,11 @@ impl Resolver {
     fn declare(&mut self, token: &Token) -> Result<(), LoxError> {
         if let Some(scope) = self.scopes.last_mut() {
             if scope.insert(token.lexeme.clone(), false).is_some() {
-                return Err(LoxError::RuntimeError(token.lexeme.clone(),token.line_no, String::from("Already exists")));
+                return Err(LoxError::RuntimeError(
+                    token.lexeme.clone(),
+                    token.line_no,
+                    String::from("Already exists"),
+                ));
             }
         }
         Ok(())

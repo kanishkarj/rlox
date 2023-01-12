@@ -1,14 +1,13 @@
-
 use std::error::Error;
 use std::fmt::Display;
 
 use logos::Logos;
 
-use crate::runtime::definitions::object::Object;
-use crate::frontend::definitions::token_type::TokenType;
 use crate::error::LoxError;
 use crate::frontend::definitions::literal::Literal;
 use crate::frontend::definitions::token::Token;
+use crate::frontend::definitions::token_type::TokenType;
+use crate::runtime::definitions::object::Object;
 
 // TODO: some issue with how we are parsing comments
 
